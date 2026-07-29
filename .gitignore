@@ -10,3 +10,10 @@
 *.jar
 *.class
 .DS_Store
+
+# Build outputs
+**/build/
+.gradle/
+*.apk
+*.jar
+*.class
