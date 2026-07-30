@@ -118,6 +118,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.MasterThievesArm
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.SkeletonKey;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.ThiefSeal;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.AbyssHorn;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.Artifact;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.TalismanOfForesight;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.TimekeepersHourglass;
 import com.shatteredpixel.shatteredpixeldungeon.items.bags.MagicalHolster;
@@ -524,7 +525,58 @@ public class Hero extends Char {
 				buff(Talent.LiquidAgilACCTracker.class).detach();
 			}
 		}
+
+		// 击杀敌人时触发神器经验积累
+		if (!enemy.isAlive() && enemy.alignment == Alignment.ENEMY) {
+			// 主神器槽
+			Item artifactItem = belongings.artifact;
+			if (artifactItem != null && !artifactItem.cursed) {
+				if (artifactItem instanceof TaiyiHolyGrail) {
+					((TaiyiHolyGrail) artifactItem).onKillEnemy(enemy);
+				} else if (artifactItem instanceof AbyssHorn) {
+					((AbyssHorn) artifactItem).onKillEnemy(enemy);
+				} else if (artifactItem instanceof ThiefSeal) {
+					((ThiefSeal) artifactItem).onKillEnemy(enemy);
+				}
+			}
+			// misc 槽
+			for (KindofMisc miscItem : belongings.misc) {
+				if (miscItem != null && !miscItem.cursed) {
+					if (miscItem instanceof TaiyiHolyGrail) {
+						((TaiyiHolyGrail) miscItem).onKillEnemy(enemy);
+					} else if (miscItem instanceof AbyssHorn) {
+						((AbyssHorn) miscItem).onKillEnemy(enemy);
+					} else if (miscItem instanceof ThiefSeal) {
+						((ThiefSeal) miscItem).onKillEnemy(enemy);
+					}
+				}
+			}
+		}
+
 		return result;
+	}
+
+	// 计算已装备神器的精准度加成总和（每件每级 +2%）
+	private float getArtifactAccuracyBonus(Hero hero) {
+		float bonus = 0;
+		Item artifactItem = belongings.artifact;
+		if (artifactItem != null && !artifactItem.cursed) {
+			if (artifactItem instanceof TaiyiHolyGrail || artifactItem instanceof AbyssHorn || artifactItem instanceof ThiefSeal) {
+				if (artifactItem instanceof Artifact) {
+					bonus += ((Artifact) artifactItem).level() * 0.02f;
+				}
+			}
+		}
+		for (KindofMisc miscItem : belongings.misc) {
+			if (miscItem != null && !miscItem.cursed) {
+				if (miscItem instanceof TaiyiHolyGrail || miscItem instanceof AbyssHorn || miscItem instanceof ThiefSeal) {
+					if (miscItem instanceof Artifact) {
+						bonus += ((Artifact) miscItem).level() * 0.02f;
+					}
+				}
+			}
+		}
+		return Math.min(bonus, 1.0f); // 最多 +100% 命中率
 	}
 
 	@Override
@@ -576,7 +628,10 @@ public class Hero extends Char {
 		if (buff(Scimitar.SwordDance.class) != null){
 			accuracy *= 1.50f;
 		}
-		
+
+		// 神器精准度加成（每级 +2% 命中率）
+		accuracy *= 1f + getArtifactAccuracyBonus(this);
+
 		if (!RingOfForce.fightingUnarmed(this)) {
 			return Math.max(1, Math.round(attackSkill * accuracy * wep.accuracyFactor( this, target )));
 		} else {

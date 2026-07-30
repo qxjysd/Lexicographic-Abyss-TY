@@ -143,6 +143,9 @@ public class TaiyiHolyGrail extends Artifact {
     public int onHeroAttack(Hero hero, Char enemy, int damage) {
         if (cursed || hero.buff(MagicImmune.class) != null || damage <= 0) return damage;
 
+        // 基础攻击力加成（每级 +1.5 伤害）
+        damage += Math.round(level() * 1.5f);
+
         float lifestealPct = 0.15f + 0.05f * level();
         int healAmount = Math.round(damage * lifestealPct);
         if (healAmount > 0 && hero.HP < hero.HT) {
@@ -150,16 +153,19 @@ public class TaiyiHolyGrail extends Artifact {
             hero.sprite.showStatusWithIcon(CharSprite.POSITIVE, Integer.toString(healAmount), FloatingText.HEALING);
         }
 
-        if (enemy.buff(MagicImmune.class) == null) {
-            exp += Math.max(1, damage / 3);
-            while (exp >= (10 + Math.round(3.33f * level())) && level() < levelCap) {
-                exp -= 10 + Math.round(3.33f * level());
-                Catalog.countUse(getClass());
-                GLog.p("太一圣杯吸收血气，等级提升！");
-                upgrade();
-            }
-        }
         return damage;
+    }
+
+    // 击杀敌人时获得经验（替代每击经验）
+    public void onKillEnemy(Char enemy) {
+        if (cursed) return;
+        exp += 5 + Math.round(level() / 2f);
+        while (exp >= (10 + Math.round(3.33f * level())) && level() < levelCap) {
+            exp -= 10 + Math.round(3.33f * level());
+            Catalog.countUse(getClass());
+            GLog.p("太一圣杯吸收血气，等级提升！");
+            upgrade();
+        }
     }
 
     @Override

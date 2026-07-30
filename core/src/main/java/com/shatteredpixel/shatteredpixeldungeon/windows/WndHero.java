@@ -612,7 +612,8 @@ public class WndHero extends WndTabbed {
 				com.watabou.noosa.PointerArea clickArea = new com.watabou.noosa.PointerArea(0, 0, 0, 0) {
 					@Override
 					public void onClick(com.watabou.input.PointerEvent event) {
-						if (t != null) {
+						// 仅在词条列表可见时响应点击
+						if (t != null && TraitsTab.this.visible && TraitsTab.this.isActive()) {
 							com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.show(new WndInfoTrait(t));
 						}
 					}
@@ -730,9 +731,10 @@ public class WndHero extends WndTabbed {
 			infoText.setPos(5, 5);
 			statusText.setPos(5, infoText.bottom() + 4);
 			resultText.setPos(5, statusText.bottom() + 4);
+			// 广告按钮固定在底部
 			btnWatchAd.setRect(
 					(width - 100) / 2,
-					resultText.bottom() + 12,
+					this.height - 30,
 					100,
 					22
 			);
@@ -806,6 +808,7 @@ public class WndHero extends WndTabbed {
 			if (dailyCount < 11) {
 				adReady = true;
 			}
+			updateDisplay();
 		}
 
 		private void onAdReward() {

@@ -28,9 +28,21 @@ import com.shatteredpixel.shatteredpixeldungeon.items.Generator;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.Trait;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfIdentify;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfMagicMapping;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfRemoveCurse;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfRage;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfMirrorImage;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.TaiyiHolyGrail;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.AbyssHorn;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.ThiefSeal;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.ChaliceOfBlood;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.HornOfPlenty;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.MasterThievesArmband;
+import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.AlchemistsToolkit;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfExperience;
 import com.watabou.utils.Bundle;
 import com.watabou.utils.Bundlable;
@@ -85,95 +97,145 @@ public class QuizSystem implements Bundlable {
 	 * 答对奖励 — 包含词条等级奖励
 	 */
 	public static String applyReward(Hero hero) {
+		// 必给：词条可加点数 +1
+		Dungeon.traits.addBonusPoints(1);
+		StringBuilder msg = new StringBuilder("答对了！词条点数 +1");
+
+		// 随机奖励分类
 		float r = Random.Float();
-
-		if (r < 0.10f) {
-			// 10% 给一个随机词条
-			Dungeon.traits.grantTrait(Dungeon.depth);
-			return "答对了！获得一个随机词条！";
-
-		} else if (r < 0.25f) {
-			// 15% 回复满血
-			hero.HP = hero.HT;
-			return "答对了！奖励：完全恢复生命值！";
-
-		} else if (r < 0.45f) {
-			// 20% 给一瓶治疗药水
-			Item item = new PotionOfHealing();
-			if (item.collect()) {
-				return "答对了！获得一瓶治疗药水！";
+		if (r < 0.35f) {
+			// 35% 药水类
+			if (Random.Float() < 0.5f) {
+				Item item = new PotionOfHealing();
+				msg.append("，获得一瓶治疗药水！");
+				if (!item.collect()) Dungeon.level.drop(item, hero.pos);
 			} else {
-				Dungeon.level.drop(item, hero.pos);
-				return "答对了！掉落了一瓶治疗药水！";
+				Item item = new PotionOfStrength();
+				msg.append("，获得一瓶力量药水！");
+				if (!item.collect()) Dungeon.level.drop(item, hero.pos);
 			}
+
+		} else if (r < 0.55f) {
+			// 20% 卷轴类
+			float sr = Random.Float();
+			Item item;
+			if (sr < 0.20f) item = new ScrollOfIdentify();
+			else if (sr < 0.40f) item = new ScrollOfUpgrade();
+			else if (sr < 0.55f) item = new ScrollOfRemoveCurse();
+			else if (sr < 0.70f) item = new ScrollOfMagicMapping();
+			else if (sr < 0.80f) item = new ScrollOfTeleportation();
+			else if (sr < 0.90f) item = new ScrollOfRage();
+			else item = new ScrollOfMirrorImage();
+			String name = item.name();
+			msg.append("，获得" + name + "！");
+			if (!item.collect()) Dungeon.level.drop(item, hero.pos);
 
 		} else if (r < 0.60f) {
-			// 15% 给鉴定卷轴
-			Item item = new ScrollOfIdentify();
-			if (item.collect()) {
-				return "答对了！获得一张鉴定卷轴！";
-			} else {
-				Dungeon.level.drop(item, hero.pos);
-				return "答对了！掉落了一张鉴定卷轴！";
+			// 5% 随机神器（不重复）
+			java.util.ArrayList<String> owned = new java.util.ArrayList<>();
+			for (com.shatteredpixel.shatteredpixeldungeon.items.Item i : Dungeon.hero.belongings.backpack.items) {
+				owned.add(i.getClass().getName());
 			}
-
-		} else if (r < 0.75f) {
-			// 15% 给地图卷轴
-			Item item = new ScrollOfMagicMapping();
-			if (item.collect()) {
-				return "答对了！获得一张地图卷轴！";
-			} else {
-				Dungeon.level.drop(item, hero.pos);
-				return "答对了！掉落了一张地图卷轴！";
+			if (Dungeon.hero.belongings.artifact != null) owned.add(Dungeon.hero.belongings.artifact.getClass().getName());
+			for (com.shatteredpixel.shatteredpixeldungeon.items.KindofMisc m : Dungeon.hero.belongings.misc) {
+				if (m != null) owned.add(m.getClass().getName());
 			}
-
-		} else if (r < 0.90f) {
-			// 15% 给移除诅咒卷轴
-			Item item = new ScrollOfRemoveCurse();
-			if (item.collect()) {
-				return "答对了！获得一张移除诅咒卷轴！";
+			java.util.ArrayList<com.shatteredpixel.shatteredpixeldungeon.items.Item> candidates = new java.util.ArrayList<>();
+			for (Class cls : new Class[]{TaiyiHolyGrail.class, AbyssHorn.class, ThiefSeal.class,
+					ChaliceOfBlood.class, HornOfPlenty.class, MasterThievesArmband.class, AlchemistsToolkit.class}) {
+				if (!owned.contains(cls.getName())) {
+					try { candidates.add((com.shatteredpixel.shatteredpixeldungeon.items.Item) cls.newInstance()); }
+					catch (Exception e) {}
+				}
+			}
+			if (!candidates.isEmpty()) {
+				Item item = Random.element(candidates);
+				msg.append("，获得神器：" + item.name() + "！");
+				if (!item.collect()) Dungeon.level.drop(item, hero.pos);
 			} else {
-				Dungeon.level.drop(item, hero.pos);
-				return "答对了！掉落了一张移除诅咒卷轴！";
+				msg.append("（神器已集齐）");
 			}
 
 		} else {
-			// 10% 给金币
+			// 40% 金币
 			int gold = Random.Int(20, 100) * (Dungeon.depth + 1);
 			Dungeon.gold += gold;
-			return "答对了！获得 " + gold + " 金币！";
+			msg.append("，获得 " + gold + " 金币！");
 		}
+		return msg.toString();
 	}
 
 	/**
 	 * 答错惩罚 — 包含词条等级惩罚
 	 */
 	public static String applyPunishment(Hero hero) {
+		StringBuilder msg = new StringBuilder("答错了！");
+
+		// 1. 15%血量伤害
 		int dmg = Math.round(hero.HP * 0.15f);
 		if (dmg < 1) dmg = 1;
 		hero.damage(dmg, new QuizSystem());
+		msg.append(" 受到 " + dmg + " 点伤害。");
 
-		// 20%概率随机降级一个词条
-		String traitMsg = "";
-		if (Random.Float() < 0.20f) {
-			ArrayList<Trait> traits = Dungeon.traits.getCollectedTraits();
-			if (traits != null && !traits.isEmpty()) {
-				// 找可以降级的词条
-				ArrayList<Trait> downgradable = new ArrayList<>();
-				for (Trait t : traits) {
-					if (t != null && t.getLevel() > t.getMinLevel()) {
-						downgradable.add(t);
-					}
-				}
-				if (!downgradable.isEmpty()) {
-					Trait target = Random.element(downgradable);
-					target.downgrade();
-					traitMsg = " 词条「" + target.getName() + "」降级了！";
+		// 2. 随机附加一个负面状态（各8.89%）
+		randomDebuff(hero, msg);
+
+		// 3. 必扣：从已有词条中随机抽取一个扣2级
+		ArrayList<Trait> traits = Dungeon.traits.getCollectedTraits();
+		if (traits != null && !traits.isEmpty()) {
+			ArrayList<Trait> downgradable = new ArrayList<>();
+			for (Trait t : traits) {
+				if (t != null && t.getLevel() > t.getMinLevel()) {
+					downgradable.add(t);
 				}
 			}
+			if (!downgradable.isEmpty()) {
+				Trait target = Random.element(downgradable);
+				int deducted = 0;
+				for (int i = 0; i < 2; i++) {
+					if (target.downgrade()) deducted++;
+				}
+				msg.append(" 词条「" + target.getName() + "」降低了 " + deducted + " 级！");
+			} else {
+				msg.append("（所有词条已达最低等级）");
+			}
+		} else {
+			msg.append("（没有可降级的词条）");
 		}
+		return msg.toString();
+	}
 
-		return "答错了！受到 " + dmg + " 点伤害。" + traitMsg;
+	private static void randomDebuff(Hero hero, StringBuilder msg) {
+		float r = Random.Float();
+		// 8.89% each, total 80% (remaining 20% = no debuff)
+		if (r < 0.0889f) {
+			com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect(hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Poison.class).set(6 + Dungeon.depth);
+			msg.append(" ☠️中毒6回合");
+		} else if (r < 0.1778f) {
+			com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect(hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Blindness.class, 6f);
+			msg.append(" 👁失明6回合");
+		} else if (r < 0.2667f) {
+			com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect(hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Ooze.class).set(6f);
+			msg.append(" 💧淤泥污秽6回合");
+		} else if (r < 0.3556f) {
+			com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect(hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Bleeding.class).set(6f);
+			msg.append(" 🩸流血6回合");
+		} else if (r < 0.4445f) {
+			com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect(hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Cripple.class, 6f);
+			msg.append(" 🦽残废6回合");
+		} else if (r < 0.5334f) {
+			com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect(hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Weakness.class, 6f);
+			msg.append(" 😵虚弱6回合");
+		} else if (r < 0.6223f) {
+			// 饥饿 - 直接减少饱食度
+			com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger hunger = com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect(hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger.class);
+			hunger.satisfy(-com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger.STARVING * 0.5f);
+			msg.append(" 🍽陷入饥饿");
+		} else if (r < 0.7112f) {
+			com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect(hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Paralysis.class, 6f);
+			msg.append(" 💫眩晕6回合");
+		}
+		// else: 20%概率无附加负面状态
 	}
 
 	@Override
