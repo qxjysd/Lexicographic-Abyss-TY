@@ -2,22 +2,10 @@
  * Lexicographic-Abyss by 许玄
  * Copyright (C) 2024-2026 许玄
  *
- * This is a modified version of Shattered Pixel Dungeon.
- * Shattered Pixel Dungeon: Copyright (C) 2014-2026 Evan Debenham
- * Pixel Dungeon: Copyright (C) 2012-2015 Oleg Dolya
- *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
 package com.shatteredpixel.shatteredpixeldungeon.items.artifacts;
@@ -53,15 +41,15 @@ import com.watabou.utils.Random;
 import java.util.ArrayList;
 
 /**
- * 盗圣之证 — 击杀怪物额外获得(50+10×等级)%金币
- * 可偷窃敌人获取物品并提升等级
- * 等级提升时金币加成和偷窃成功率同步提升
+ * 盗圣之证 — 攻击使敌人残废 + 偷窃升级
+ * 可偷窃敌人物品，成功偷窃提升等级
+ * 攻击时概率使敌人残废减速
  */
 public class ThiefSeal extends Artifact {
 
     {
         image = ItemSpriteSheet.ARTIFACT_ARMBAND;
-        levelCap = 10;
+        levelCap = Integer.MAX_VALUE;
 
         charge = 0;
         partialCharge = 0;
@@ -117,8 +105,35 @@ public class ThiefSeal extends Artifact {
     }
 
     /**
-     * 偷窃目标选择器
+     * 攻击触发：概率残废 + 经验积累升级
+     * 残废概率：(15 + 5×等级)%
+     * 持续：(2 + 等级/2) 回合
      */
+    public void onHeroAttack(Hero hero, Char enemy, int damage) {
+        if (cursed || hero.buff(MagicImmune.class) != null || damage <= 0) {
+            return;
+        }
+
+        // 概率使敌人残废
+        float crippleChance = 0.15f + 0.05f * level();
+        if (Random.Float() < crippleChance && enemy.buff(MagicImmune.class) == null) {
+            int crippleDuration = 2 + level() / 2;
+            Buff.prolong(enemy, Cripple.class, crippleDuration);
+            GLog.p("盗圣之证使敌人残废！");
+        }
+
+        // 造成伤害积累经验升级
+        if (enemy.buff(MagicImmune.class) == null) {
+            exp += Math.max(1, damage / 4);
+            while (exp >= (10 + Math.round(3.33f * level())) && level() < levelCap) {
+                exp -= 10 + Math.round(3.33f * level());
+                Catalog.countUse(getClass());
+                GLog.p("盗圣之证经验提升，等级提高！");
+                upgrade();
+            }
+        }
+    }
+
     public CellSelector.Listener targeter = new CellSelector.Listener() {
 
         @Override
@@ -213,9 +228,6 @@ public class ThiefSeal extends Artifact {
         }
     };
 
-    /**
-     * 偷窃记录 — 防止重复偷窃同一目标
-     */
     public static class StolenTracker extends CounterBuff {
         { revivePersists = true; }
 
@@ -224,10 +236,6 @@ public class ThiefSeal extends Artifact {
         public boolean itemWasStolen() { return count() > 0; }
     }
 
-    /**
-     * 击杀敌人时额外金币倍率
-     * 如: 0.5 = 额外50%, 1.0 = 额外100%
-     */
     public float onKillGoldMultiplier() {
         if (cursed) return 0f;
         return 0.5f + 0.1f * level();
@@ -264,9 +272,11 @@ public class ThiefSeal extends Artifact {
 
     @Override
     public String desc() {
-        String desc = "盗圣留下的信物，可偷窃敌人获取物品并借此升级。击杀怪物额外获得金币。";
+        String desc = "盗圣留下的信物，可偷窃敌人物品。攻击时概率使敌人残废。";
         if (isEquipped(Dungeon.hero)) {
+            float crippleChance = 0.15f + 0.05f * level();
             desc += "\n\n当前等级：" + level()
+                    + "\n残废概率：" + (int)(crippleChance * 100) + "%"
                     + "\n金币加成：击杀额外获得 " + (50 + 10 * level()) + "%"
                     + "\n充能：" + charge + "/" + chargeCap;
             if (cursed) {
@@ -278,9 +288,6 @@ public class ThiefSeal extends Artifact {
         return desc;
     }
 
-    /**
-     * 盗证被动 — 自动充能 + 偷窃逻辑
-     */
     public class ThiefSealThievery extends ArtifactBuff {
 
         @Override
@@ -289,14 +296,10 @@ public class ThiefSeal extends Artifact {
                 Dungeon.gold--;
                 updateQuickslot();
             }
-
             spend(TICK);
             return true;
         }
 
-        /**
-         * 随英雄等级自动获得充能
-         */
         public void gainCharge(float levelPortion) {
             if (cursed || target.buff(MagicImmune.class) != null) return;
 
@@ -319,53 +322,11 @@ public class ThiefSeal extends Artifact {
                 partialCharge = 0f;
             }
         }
+    }
 
-        /**
-         * 偷窃物品（返回是否成功）
-         */
-        public boolean steal(Item item) {
-            int chargesUsed = chargesToUse(item);
-            float stealChance = stealChance(item);
-            if (Random.Float() > stealChance) {
-                return false;
-            } else {
-                charge -= chargesUsed;
-                exp += 4 * chargesUsed;
-                GLog.i("偷窃成功！获得了 " + item.name() + "！");
-
-                Talent.onArtifactUsed(Dungeon.hero);
-                while (exp >= (10 + Math.round(3.33f * level())) && level() < levelCap) {
-                    exp -= 10 + Math.round(3.33f * level());
-                    Catalog.countUse(ThiefSeal.class);
-                    GLog.p("盗圣之证经验提升，等级提高！");
-                    upgrade();
-                }
-                updateQuickslot();
-                return true;
-            }
-        }
-
-        /**
-         * 计算偷窃成功率
-         */
-        public float stealChance(Item item) {
-            int chargesUsed = chargesToUse(item);
-            float val = chargesUsed * (10 + level() / 2f);
-            return Math.min(1f, val / item.value());
-        }
-
-        /**
-         * 计算偷窃物品所需充能数
-         */
-        public int chargesToUse(Item item) {
-            int value = item.value();
-            float valUsing = 0;
-            int chargesUsed = 0;
-            while (valUsing < value && chargesUsed < charge) {
-                valUsing += 10 + level() / 2f;
-                chargesUsed++;
-            }
-            return chargesUsed;
-        }
+    @Override
+    public String actionName(String action, Hero hero) {
+        if (action.equals(AC_STEAL)) return "偷窃";
+        return super.actionName(action, hero);
     }
 }
