@@ -520,12 +520,15 @@ public class Dungeon {
 		hero.viewDistance = light == null ? level.viewDistance : Math.max( Light.DISTANCE, level.viewDistance );
 
 		// 词条视野加成（VISION）
-		if (Dungeon.traits != null) {
-			float visionBonus = com.shatteredpixel.shatteredpixeldungeon.items.TraitHandler.getVisionBonus(hero);
-			if (visionBonus > 0) {
-				hero.viewDistance = Math.round(hero.viewDistance * (1 + visionBonus));
-			}
-		}
+				if (Dungeon.traits != null) {
+					float visionBonus = com.shatteredpixel.shatteredpixeldungeon.items.TraitHandler.getVisionBonus(hero);
+					if (visionBonus > 0) {
+						hero.viewDistance = Math.round(hero.viewDistance * (1 + visionBonus));
+					} else if (visionBonus < 0) {
+						// 负视野：减少可视范围（至少保留1格）
+						hero.viewDistance = Math.max(1, Math.round(hero.viewDistance * (1 + visionBonus)));
+					}
+				}
 		
 		hero.curAction = hero.lastAction = null;
 

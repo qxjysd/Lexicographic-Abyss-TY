@@ -31,7 +31,6 @@ import com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene;
 import com.shatteredpixel.shatteredpixeldungeon.ui.RenderedTextBlock;
 import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.watabou.noosa.Image;
-import com.watabou.noosa.ColorBlock;
 import com.watabou.gltextures.TextureCache;
 import com.shatteredpixel.shatteredpixeldungeon.Chrome;
 import com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton;
@@ -40,25 +39,16 @@ public class WndInfoTrait extends Window {
 
     private static final float GAP = 2;
     private static final int WIDTH = 120;
-    private static WndInfoTrait currentInstance = null;
 
     public WndInfoTrait(Trait trait) {
         super();
 
-        // 防止重复打开多个窗口
-        if (currentInstance != null) {
-            currentInstance.onBackPressed();
-        }
-        currentInstance = this;
-
         IconTitle titlebar = new IconTitle();
 
-        // 判断是否降级（正面词条但等级≤0 → 实际负效果）
         boolean isDegraded = trait.isPositive() && trait.getLevel() <= 0;
         boolean isEffectivelyPositive = trait.isPositive() && !isDegraded;
         int color = isEffectivelyPositive ? 0xFF44CC44 : 0xFFCC4444;
 
-        // 颜色方块表示正负面
         Image icon = new Image(TextureCache.createSolid(color));
         icon.hardlight(color);
         icon.width = 16;
@@ -82,7 +72,6 @@ public class WndInfoTrait extends Window {
             @Override
             protected void onClick() {
                 super.onClick();
-                currentInstance = null;
                 onBackPressed();
             }
         };
@@ -95,7 +84,7 @@ public class WndInfoTrait extends Window {
         txtInfo.setPos(titlebar.left(), titlebar.bottom() + 2 * GAP);
         add(txtInfo);
 
-        // 等级信息（降级词条显示特殊标注）
+        // 等级信息
         RenderedTextBlock txtLevel;
         if (isDegraded) {
             txtLevel = PixelScene.renderTextBlock(
@@ -123,11 +112,5 @@ public class WndInfoTrait extends Window {
         add(txtEffect);
 
         resize(WIDTH, (int) txtEffect.bottom() + 2);
-    }
-
-    @Override
-    public void onBackPressed() {
-        currentInstance = null;
-        super.onBackPressed();
     }
 }

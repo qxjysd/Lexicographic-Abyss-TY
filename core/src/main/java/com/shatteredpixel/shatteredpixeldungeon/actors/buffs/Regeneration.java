@@ -31,6 +31,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.SpiritForm;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.ChaliceOfBlood;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfEnergy;
+import com.shatteredpixel.shatteredpixeldungeon.items.TraitHandler;
 import com.shatteredpixel.shatteredpixeldungeon.items.trinkets.ChaoticCenser;
 import com.shatteredpixel.shatteredpixeldungeon.items.trinkets.SaltCube;
 import com.shatteredpixel.shatteredpixeldungeon.levels.VaultLevel;
@@ -85,6 +86,27 @@ public class Regeneration extends Buff {
 				//salt cube is turned off while regen is disabled.
 				if (target.buff(LockedFloor.class) == null) {
 					delay /= SaltCube.healthRegenMultiplier();
+				}
+
+				// 词条恢复/扣血效果（REGEN类型）
+				if (target.buff(MagicImmune.class) == null && Dungeon.traits != null) {
+					float regenBonus = TraitHandler.getRegenBonus((Hero) target);
+					if (regenBonus > 0) {
+						// 正REGEN：加快回血速度
+						delay /= (1 + regenBonus);
+					} else if (regenBonus < 0) {
+						// 负REGEN：主动扣血（即使regenOff也生效）
+						float drainAmount = Math.abs(regenBonus) * 1.5f;
+						partialRegen -= drainAmount;
+						if (partialRegen <= -1) {
+							int dmg = (int)Math.floor(Math.abs(partialRegen));
+							target.HP = Math.max(0, target.HP - dmg);
+							partialRegen += dmg;
+							if (target.HP <= 0) {
+								target.damage(1, this);
+							}
+						}
+					}
 				}
 
 				partialRegen += 1f / delay;

@@ -54,21 +54,7 @@ public class WornKey extends Key {
 
 	@Override
 	public boolean doPickUp(Hero hero, int pos) {
-		if(!SPDSettings.supportNagged()){
-			try {
-				Dungeon.saveAll();
-				Game.runOnRenderThread(new Callback() {
-					@Override
-					public void call() {
-						ShatteredPixelDungeon.scene().add(new WndSupportPrompt());
-					}
-				});
-			} catch (IOException e) {
-				ShatteredPixelDungeon.reportException(e);
-			}
-			
-		}
-		
+		// 已移除开发者留言弹窗
 		return super.doPickUp(hero, pos);
 	}
 

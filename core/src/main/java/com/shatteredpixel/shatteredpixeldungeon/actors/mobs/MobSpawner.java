@@ -48,14 +48,14 @@ public class MobSpawner extends Actor {
 	protected boolean act() {
 
 		// 检查是否所有怪物已被清理
-		if (Dungeon.level.mobCount() == 0 && Dungeon.level.mobs.size() > 1 && !allClearedNotified) {
+		if (Dungeon.level.mobCount() == 0 && !allClearedNotified) {
 			allClearedNotified = true;
 			clearWaves++;
 			// 清理次数越多，刷新越快，数量更多
-			// 每次额外生成: 5 + clearWaves*2 + depth/5
+			// 每次额外生成: 5 + clearWaves*2 + depth/5（最大50）
 			int extraCount = 5 + clearWaves*2 + Dungeon.depth/5;
-			if (extraCount > 40) extraCount = 40;
-			// 分批生成，每次最多生成3只
+			if (extraCount > 50) extraCount = 50;
+			// 分批生成，每次最多生成4只
 			int spawned = 0;
 			for (int i = 0; i < extraCount && spawned < 30; i++) {
 				if (Dungeon.level.spawnMob(12 + i*2)) {

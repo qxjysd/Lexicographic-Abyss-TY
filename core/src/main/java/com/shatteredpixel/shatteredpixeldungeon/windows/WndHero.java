@@ -481,8 +481,8 @@ public class WndHero extends WndTabbed {
 
 		private void setupList() {
 			Component content = traitList.content();
-			// 安全保护：窗口已关闭或未激活时不再刷新
-			if (!isActive()) return;
+			// 双重安全保护：content 和其父级必须有效
+			if (!isActive() || content == null || content.parent == null) return;
 			content.clear();
 			slots.clear();
 
@@ -611,25 +611,16 @@ public class WndHero extends WndTabbed {
 				// 可点击区域：查看词条详情
 				com.watabou.noosa.PointerArea clickArea = new com.watabou.noosa.PointerArea(0, 0, 0, 0) {
 					@Override
-					public void onClick(com.watabou.input.PointerEvent event) {
-						// 仅在词条列表可见时响应点击
-						if (t != null && TraitsTab.this.visible && TraitsTab.this.isActive()) {
-							com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.show(new WndInfoTrait(t));
+										public void onClick(com.watabou.input.PointerEvent event) {
+											// 仅在词条列表可见且父窗口未关闭时响应
+											if (t != null && TraitsTab.this.visible && TraitsTab.this.isActive()
+													&& TraitsTab.this.parent != null && TraitsTab.this.parent.visible) {
+												com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.show(new WndInfoTrait(t));
 						}
 					}
 				};
 				clickArea.blockLevel = com.watabou.noosa.PointerArea.NEVER_BLOCK;
 				add(clickArea);
-				// 添加关闭按钮
-				com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton closeBtn = new com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton(
-						com.shatteredpixel.shatteredpixeldungeon.Chrome.Type.GREY_BUTTON_TR, "X", 5) {
-					@Override
-					protected void onClick() {
-						if (TraitsTab.this.isActive()) {
-							// 关闭按钮仅供 TraitSlot 内部使用
-						}
-					}
-				};
 			}
 
 			@Override
@@ -666,11 +657,11 @@ public class WndHero extends WndTabbed {
 				// 调整点击区域仅覆盖中间名称区（排除左右 +/- 按钮）
 				for (com.watabou.noosa.Gizmo g : members) {
 					if (g instanceof com.watabou.noosa.PointerArea) {
-						com.watabou.noosa.PointerArea pa = (com.watabou.noosa.PointerArea) g;
-						pa.x = x + 16;
-						pa.y = y;
-						pa.width = width - 32;
-						pa.height = height;
+												com.watabou.noosa.PointerArea pa = (com.watabou.noosa.PointerArea) g;
+												pa.x = 16;
+												pa.y = 0;
+												pa.width = Math.max(10, width - 32);
+												pa.height = height;
 						break;
 					}
 				}

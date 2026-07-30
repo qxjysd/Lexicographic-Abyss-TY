@@ -1620,6 +1620,29 @@ public class Hero extends Char {
 					}
 				}
 
+				// 词条：吸血效果（LIFESTEAL% 转化为治疗）
+				if (damage > 0) {
+					float lifestealPct = TraitHandler.getLifestealPercent(this);
+					if (lifestealPct > 0) {
+						int heal = Math.round(damage * lifestealPct);
+						HP = Math.min(HT, HP + heal);
+					} else if (lifestealPct < 0) {
+						// 负吸血：攻击反噬
+						int selfDmg = Math.round(damage * Math.abs(lifestealPct));
+						damage(selfDmg, this);
+					}
+				}
+
+				// 词条：暴击率加成（CRIT）
+				float critChance = TraitHandler.getCritChance(this);
+				if (critChance > 0 && Random.Float() < critChance) {
+					damage = Math.round(damage * 1.5f);
+					if (enemy.sprite != null) enemy.sprite.showStatus(CharSprite.NEGATIVE, "暴击!");
+				} else if (critChance < 0 && Random.Float() < Math.abs(critChance)) {
+					// 负暴击：伤害减少
+					damage = Math.round(damage * 0.5f);
+				}
+
 								if (wep != null) {
 			damage = wep.proc( this, enemy, damage );
 		} else {

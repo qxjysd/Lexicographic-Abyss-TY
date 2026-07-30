@@ -167,8 +167,49 @@ public class TraitHandler {
     	// ===== 负面: 反噬效果（仅计算负面的净效果） =====
     	applyNegativeSelfEffects(hero, enemy, damage);
 
-    	return extraDmg;
-    }
+    	// ===== 命途多舛 特殊处理 =====
+    	procDoomTrait(hero, enemy, damage);
+
+    		return extraDmg;
+    	}
+
+    	// ===== 命途多舛 特殊处理（ID=503，正等级对敌/负等级对己）=====
+    	private static void procDoomTrait(Hero hero, Char enemy, int damage) {
+    	    if (Dungeon.traits == null) return;
+    	    ArrayList<Trait> traits = Dungeon.traits.getCollectedTraits();
+    	    for (Trait t : traits) {
+    	        if (t == null) continue;
+    	        // 命途多舛的ID是503
+    	        if (t.getId() == 503) {
+    	            int level = t.getLevel();
+    	            if (level == 0) return;
+                
+    	            if (enemy == null) return;
+                
+    	            // 8种负面状态，每种12.5%概率
+    	            int effectCount = Math.min(3, Math.abs(level) / 2 + 1);
+    	            for (int i = 0; i < effectCount; i++) {
+    	                if (Random.Float() > Math.abs(level) * 0.03f) continue; // 每级3%触发概率
+                    
+    	                int roll = Random.Int(8);
+    	                Char target = level > 0 ? enemy : hero; // 正等级对敌，负等级对己
+    	                if (!target.isAlive()) break;
+                    
+    	                switch (roll) {
+    	                    case 0: Buff.affect(target, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Poison.class).set(5 + level/2); break;
+    	                    case 1: Buff.affect(target, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Bleeding.class).set(5 + level/2); break;
+    	                    case 2: Buff.affect(target, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Cripple.class, 3f); break;
+    	                    case 3: Buff.affect(target, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Paralysis.class, 3f); break;
+    	                    case 4: Buff.affect(target, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Weakness.class, 5f); break;
+    	                    case 5: Buff.affect(target, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Blindness.class, 3f); break;
+    	                    case 6: Buff.affect(target, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Vertigo.class, 3f); break;
+    	                    case 7: Buff.affect(target, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Terror.class, 3f); break;
+    	                }
+    	            }
+    	            break;
+    	        }
+    	    }
+    	}
 
     // ===== 负面反噬效果（独立方法，简化逻辑） =====
     private static void applyNegativeSelfEffects(Hero hero, Char enemy, int damage) {
@@ -301,15 +342,19 @@ public class TraitHandler {
         ArrayList<Trait> traits = Dungeon.traits.getCollectedTraits();
         float total = 0;
         for (Trait t : traits) {
+            if (t == null) continue;
             if (t.getEffectType().equals(type)) {
                 if (positiveOnly && !t.isPositive()) continue;
                 total += t.getActualEffect();
             }
-            // 负面MISC词条（"全属性降低"）作为减益叠加到所有属性类型上
+            // 负面MISC词条（"全属性降低"）仅叠加到核心属性上
             if (!type.equals("MISC")
                 && t.getEffectType().equals("MISC")
                 && !t.isPositive()
-                && !positiveOnly) {
+                && !positiveOnly
+                && (type.equals("ATK") || type.equals("DEF") || type.equals("HP")
+                    || type.equals("SPD") || type.equals("DODGE") || type.equals("DEX")
+                    || type.equals("HASTE") || type.equals("VISION"))) {
                 total += t.getActualEffect();
             }
         }
