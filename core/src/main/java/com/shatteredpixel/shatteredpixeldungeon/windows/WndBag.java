@@ -111,8 +111,9 @@ public class WndBag extends WndTabbed {
 		nCols = PixelScene.landscape() ? COLS_L : COLS_P;
 		nRows = (int)Math.ceil(25/(float)nCols); //we expect to lay out 25 slots in all cases
 
+		int equipRows = 2; // 装备行数(8件装备)
 		int windowWidth = slotWidth * nCols + SLOT_MARGIN * (nCols - 1);
-		int windowHeight = TITLE_HEIGHT + slotHeight * nRows + SLOT_MARGIN * (nRows - 1);
+		int windowHeight = TITLE_HEIGHT + slotHeight * (nRows + equipRows) + SLOT_MARGIN * (nRows + equipRows - 1);
 
 		if (PixelScene.landscape()){
 			while (slotHeight >= 24 && (windowHeight + 20 + chrome.marginTop()) > PixelScene.uiCamera.height){
@@ -247,15 +248,20 @@ public class WndBag extends WndTabbed {
 	
 	protected void placeItems( Bag container ) {
 		
-		// Equipped items
+		// Equipped items (11槽全显示)
 		Belongings stuff = Dungeon.hero.belongings;
 		placeItem( stuff.weapon != null ? stuff.weapon : new Placeholder( ItemSpriteSheet.WEAPON_HOLDER ) );
 		placeItem( stuff.armor != null ? stuff.armor : new Placeholder( ItemSpriteSheet.ARMOR_HOLDER ) );
 		placeItem( stuff.artifact != null ? stuff.artifact : new Placeholder( ItemSpriteSheet.ARTIFACT_HOLDER ) );
 		placeItem( stuff.misc[0] != null ? (Item)stuff.misc[0] : new Placeholder( ItemSpriteSheet.SOMETHING ) );
 		placeItem( stuff.ring[0] != null ? (Item)stuff.ring[0] : new Placeholder( ItemSpriteSheet.RING_HOLDER ) );
+		// 第二行
+		placeItem( stuff.misc[1] != null ? (Item)stuff.misc[1] : new Placeholder( ItemSpriteSheet.SOMETHING ) );
+		placeItem( stuff.misc[2] != null ? (Item)stuff.misc[2] : new Placeholder( ItemSpriteSheet.SOMETHING ) );
+		placeItem( stuff.misc[3] != null ? (Item)stuff.misc[3] : new Placeholder( ItemSpriteSheet.SOMETHING ) );
+		placeItem( stuff.ring[1] != null ? (Item)stuff.ring[1] : new Placeholder( ItemSpriteSheet.RING_HOLDER ) );
 
-		int equipped = 5;
+		int equipped = 9;
 
 		//the container itself if it's not the root backpack
 		if (container != Dungeon.hero.belongings.backpack){

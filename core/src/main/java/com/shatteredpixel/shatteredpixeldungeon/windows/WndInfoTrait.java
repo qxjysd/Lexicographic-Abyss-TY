@@ -1,4 +1,5 @@
-/* Pixel Dungeon
+/*
+ * Pixel Dungeon
  * Copyright (C) 2012-2015 Oleg Dolya
  *
  * Shattered Pixel Dungeon
@@ -32,14 +33,23 @@ import com.shatteredpixel.shatteredpixeldungeon.ui.Window;
 import com.watabou.noosa.Image;
 import com.watabou.noosa.ColorBlock;
 import com.watabou.gltextures.TextureCache;
+import com.shatteredpixel.shatteredpixeldungeon.Chrome;
+import com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton;
 
 public class WndInfoTrait extends Window {
 
     private static final float GAP = 2;
     private static final int WIDTH = 120;
+    private static WndInfoTrait currentInstance = null;
 
     public WndInfoTrait(Trait trait) {
         super();
+
+        // 防止重复打开多个窗口
+        if (currentInstance != null) {
+            currentInstance.onBackPressed();
+        }
+        currentInstance = this;
 
         IconTitle titlebar = new IconTitle();
 
@@ -67,6 +77,18 @@ public class WndInfoTrait extends Window {
         titlebar.setRect(0, 0, WIDTH, 0);
         add(titlebar);
 
+        // 关闭按钮（右上角 X）
+        StyledButton closeBtn = new StyledButton(Chrome.Type.GREY_BUTTON_TR, "X", 6) {
+            @Override
+            protected void onClick() {
+                super.onClick();
+                currentInstance = null;
+                onBackPressed();
+            }
+        };
+        closeBtn.setRect(WIDTH - 16, 1, 14, 14);
+        add(closeBtn);
+
         // 效果描述
         RenderedTextBlock txtInfo = PixelScene.renderTextBlock(trait.getDesc(), 6);
         txtInfo.maxWidth(WIDTH);
@@ -90,6 +112,22 @@ public class WndInfoTrait extends Window {
         txtLevel.hardlight(color);
         add(txtLevel);
 
-        resize(WIDTH, (int) txtLevel.bottom() + 2);
+        // 效果数值
+        float effectVal = trait.getActualEffect();
+        String effectStr = effectVal >= 0 
+            ? "+" + String.format("%.1f", effectVal * 100) + "%" 
+            : String.format("%.1f", effectVal * 100) + "%";
+        RenderedTextBlock txtEffect = PixelScene.renderTextBlock("效果: " + effectStr, 6);
+        txtEffect.maxWidth(WIDTH);
+        txtEffect.setPos(titlebar.left(), txtLevel.bottom() + GAP);
+        add(txtEffect);
+
+        resize(WIDTH, (int) txtEffect.bottom() + 2);
+    }
+
+    @Override
+    public void onBackPressed() {
+        currentInstance = null;
+        super.onBackPressed();
     }
 }

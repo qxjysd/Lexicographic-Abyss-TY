@@ -8,20 +8,10 @@
  * Lexicographic-Abyss (modified version) by 许玄
  * Copyright (C) 2024-2026 许玄
  *
- * This is a modified version of Shattered Pixel Dungeon. Original copyrights apply.
- *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
 package com.shatteredpixel.shatteredpixeldungeon.items.artifacts;
@@ -33,25 +23,20 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Cripple;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.MagicImmune;
-import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Belongings;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Bleeding;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Talent;
 import com.shatteredpixel.shatteredpixeldungeon.effects.SpellSprite;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
-import com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag;
-import com.shatteredpixel.shatteredpixeldungeon.items.food.Blandfruit;
 import com.shatteredpixel.shatteredpixeldungeon.items.food.Food;
-import com.shatteredpixel.shatteredpixeldungeon.items.food.MeatPie;
-import com.shatteredpixel.shatteredpixeldungeon.items.food.Pasty;
-import com.shatteredpixel.shatteredpixeldungeon.items.food.PhantomMeat;
 import com.shatteredpixel.shatteredpixeldungeon.items.rings.RingOfEnergy;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Catalog;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
-import com.shatteredpixel.shatteredpixeldungeon.windows.WndBag;
 import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.Bundle;
 import com.watabou.utils.Random;
@@ -59,16 +44,15 @@ import com.watabou.utils.Random;
 import java.util.ArrayList;
 
 /**
- * 洞渊神角 — 攻击时概率造成额外伤害
- * 可储存食物充能，食用充能恢复饱食度
- * 储存食物可提升神器等级
- * 等级提升时触发概率和额外伤害同步提升
+ * 洞渊神角 — 攻击使敌人流血 + 击杀升级
+ * 可食用储存的能量恢复饱食度
+ * 攻击时概率使敌人陷入流血状态
  */
 public class AbyssHorn extends Artifact {
 
     {
         image = ItemSpriteSheet.ARTIFACT_HORN1;
-        levelCap = 10;
+        levelCap = Integer.MAX_VALUE;
 
         charge = 0;
         partialCharge = 0;
@@ -76,8 +60,6 @@ public class AbyssHorn extends Artifact {
 
         defaultAction = AC_SNACK;
     }
-
-    private int storedFoodEnergy = 0;
 
     public static final String AC_SNACK = "SNACK";
     public static final String AC_EAT = "EAT";
@@ -96,7 +78,7 @@ public class AbyssHorn extends Artifact {
             actions.add(AC_SNACK);
             actions.add(AC_EAT);
         }
-        if (isEquipped(hero) && level() < levelCap && !cursed) {
+        if (isEquipped(hero) && !cursed) {
             actions.add(AC_STORE);
         }
         return actions;
@@ -111,9 +93,8 @@ public class AbyssHorn extends Artifact {
         if (action.equals(AC_EAT) || action.equals(AC_SNACK)) {
 
             if (!isEquipped(hero)) GLog.i("需要先装备洞渊神角！");
-            else if (charge == 0) GLog.i("洞渊神角中没有储存的食物！");
+            else if (charge == 0) GLog.i("洞渊神角中没有储存的能量！");
             else {
-                // 消耗充能恢复饱食度，最少消耗1点
                 int satietyPerCharge = (int) (Hunger.STARVING / 5f);
                 if (Dungeon.isChallenged(Challenges.NO_FOOD)) {
                     satietyPerCharge /= 3;
@@ -123,7 +104,6 @@ public class AbyssHorn extends Artifact {
                 int chargesToUse = Math.max(1, hunger.hunger() / satietyPerCharge);
                 if (chargesToUse > charge) chargesToUse = charge;
 
-                // 零食模式只消耗1点充能
                 if (action.equals(AC_SNACK)) {
                     chargesToUse = 1;
                 }
@@ -136,9 +116,6 @@ public class AbyssHorn extends Artifact {
         }
     }
 
-    /**
-     * 执行进食效果
-     */
     public void doEatEffect(Hero hero, int chargesToUse) {
         int satietyPerCharge = (int) (Hunger.STARVING / 5f);
         if (Dungeon.isChallenged(Challenges.NO_FOOD)) {
@@ -146,9 +123,7 @@ public class AbyssHorn extends Artifact {
         }
 
         Buff.affect(hero, Hunger.class).satisfy(satietyPerCharge * chargesToUse);
-
         Statistics.foodEaten++;
-
         charge -= chargesToUse;
         Talent.onArtifactUsed(hero);
 
@@ -156,7 +131,7 @@ public class AbyssHorn extends Artifact {
         hero.busy();
         SpellSprite.show(hero, SpellSprite.FOOD);
         Sample.INSTANCE.play(Assets.Sounds.EAT);
-        GLog.i("洞渊神角释放了储存的食物能量！");
+        GLog.i("洞渊神角释放了储存的能量！");
 
         if (Dungeon.hero.hasTalent(Talent.IRON_STOMACH)
                 || Dungeon.hero.hasTalent(Talent.ENERGIZING_MEAL)
@@ -170,16 +145,11 @@ public class AbyssHorn extends Artifact {
         }
 
         Talent.onFoodEaten(hero, satietyPerCharge * chargesToUse, this);
-
         Badges.validateFoodEaten();
-
         updateChargeImage();
         updateQuickslot();
     }
 
-    /**
-     * 根据充能更新图标
-     */
     private void updateChargeImage() {
         if (charge >= 8)        image = ItemSpriteSheet.ARTIFACT_HORN4;
         else if (charge >= 5)   image = ItemSpriteSheet.ARTIFACT_HORN3;
@@ -188,27 +158,35 @@ public class AbyssHorn extends Artifact {
     }
 
     /**
-     * 攻击触发额外伤害 — (10+2*等级)%概率造成(50+5*等级)%额外伤害
+     * 攻击触发：概率流血 + 经验积累升级
+     * 流血概率：(10 + 5×等级)%
+     * 流血持续：(2 + 等级/2) 回合
      */
     public int onHeroAttack(Hero hero, Char enemy, int damage) {
         if (cursed || hero.buff(MagicImmune.class) != null || damage <= 0) {
             return damage;
         }
 
-        float chance = 0.1f + 0.02f * level();
-        if (Random.Float() < chance) {
-            float extraDmgMultiplier = 0.5f + 0.05f * level();
-            int extraDamage = Math.round(damage * extraDmgMultiplier);
-            GLog.p("洞渊神角触发！造成额外 " + extraDamage + " 点伤害！");
-            return damage + extraDamage;
+        // 概率使敌人流血
+        float bleedChance = 0.1f + 0.05f * level();
+        if (Random.Float() < bleedChance && enemy.buff(MagicImmune.class) == null) {
+            int bleedDuration = 2 + level() / 2;
+            Buff.affect(enemy, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Bleeding.class).set(bleedDuration);
+            GLog.p("洞渊神角使敌人陷入流血状态！");
+        }
+
+        // 造成伤害积累经验升级
+        if (enemy.buff(MagicImmune.class) == null) {
+            exp += Math.max(1, damage / 3);
+            while (exp >= (10 + Math.round(3.33f * level())) && level() < levelCap) {
+                exp -= 10 + Math.round(3.33f * level());
+                Catalog.countUse(getClass());
+                GLog.p("洞渊神角吞噬血气，等级提升！");
+                upgrade();
+            }
         }
 
         return damage;
-    }
-
-    @Override
-    protected ArtifactBuff passiveBuff() {
-        return new AbyssHornRecharge();
     }
 
     @Override
@@ -218,12 +196,10 @@ public class AbyssHorn extends Artifact {
             while (partialCharge >= 1) {
                 partialCharge--;
                 charge++;
-
                 if (charge == chargeCap) {
                     GLog.p("洞渊神角充能已满！");
                     partialCharge = 0;
                 }
-
                 updateChargeImage();
                 updateQuickslot();
             }
@@ -232,18 +208,16 @@ public class AbyssHorn extends Artifact {
 
     @Override
     public String desc() {
-        String desc = "来自深渊的神秘号角，可储存食物充能恢复饱食度。攻击时有概率触发额外伤害。";
+        String desc = "来自深渊的神秘号角，可储存能量恢复饱食度。攻击时有概率使敌人流血。";
         if (isEquipped(Dungeon.hero)) {
-            float chance = 0.1f + 0.02f * level();
-            float extraDmg = 0.5f + 0.05f * level();
+            float bleedChance = 0.1f + 0.05f * level();
+            int bleedDuration = 2 + level() / 2;
             desc += "\n\n当前等级：" + level()
-                    + "\n触发概率：" + (int) (chance * 100) + "%"
-                    + "\n额外伤害：" + (int) (extraDmg * 100) + "%"
+                    + "\n流血概率：" + (int)(bleedChance * 100) + "%"
+                    + "\n流血持续：" + bleedDuration + " 回合"
                     + "\n充能：" + charge + "/" + chargeCap;
             if (cursed) {
                 desc += "\n\n神角已被诅咒，无法使用！";
-            } else if (level() < levelCap) {
-                desc += "\n\n将食物存入神角可提升其等级。";
             }
         }
         return desc;
@@ -262,77 +236,73 @@ public class AbyssHorn extends Artifact {
         return this;
     }
 
-    /**
-     * 储存食物能量用于升级
-     */
-    public void gainFoodValue(Food food) {
-        if (level() >= 10) return;
-
-        storedFoodEnergy += food.energy;
-        // 馅饼和幻影肉值2次升级，肉馅饼值4次
-        if (food instanceof Pasty || food instanceof PhantomMeat) {
-            storedFoodEnergy += Hunger.HUNGRY / 2;
-        } else if (food instanceof MeatPie) {
-            storedFoodEnergy += Hunger.HUNGRY;
+    public void gainFoodValue(com.shatteredpixel.shatteredpixeldungeon.items.food.Food food) {
+        if (level() >= levelCap) return;
+        int foodEnergy = (int) food.energy;
+        if (food instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.Pasty
+                || food instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.PhantomMeat) {
+            foodEnergy += com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger.HUNGRY / 2;
+        } else if (food instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.MeatPie) {
+            foodEnergy += com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger.HUNGRY;
         }
-        if (storedFoodEnergy >= Hunger.HUNGRY) {
-            int upgrades = storedFoodEnergy / (int) Hunger.HUNGRY;
-            upgrades = Math.min(upgrades, 10 - level());
+        if (foodEnergy >= com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger.HUNGRY) {
+            int upgrades = foodEnergy / (int) com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Hunger.HUNGRY;
             upgrade(upgrades);
             Catalog.countUse(AbyssHorn.class);
-            storedFoodEnergy -= upgrades * Hunger.HUNGRY;
-            if (level() == 10) {
-                storedFoodEnergy = 0;
-                GLog.p("洞渊神角已达到最大等级！");
-            } else {
-                GLog.p("洞渊神角吸收了食物能量，等级提升！");
-            }
+            GLog.p("洞渊神角吸收了食物能量，等级提升！");
         } else {
             GLog.i("洞渊神角吸收了食物能量。");
         }
     }
 
-    private static final String STORED = "stored";
+    protected static com.shatteredpixel.shatteredpixeldungeon.windows.WndBag.ItemSelector itemSelector =
+            new com.shatteredpixel.shatteredpixeldungeon.windows.WndBag.ItemSelector() {
+        @Override
+        public String textPrompt() { return "选择要存入洞渊神角的食物"; }
+        @Override
+        public Class<? extends com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag> preferredBag() {
+            return com.shatteredpixel.shatteredpixeldungeon.actors.hero.Belongings.Backpack.class;
+        }
+        @Override
+        public boolean itemSelectable(com.shatteredpixel.shatteredpixeldungeon.items.Item item) {
+            return item instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.Food;
+        }
+        @Override
+        public void onSelect(com.shatteredpixel.shatteredpixeldungeon.items.Item item) {
+            if (item != null && item instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.Food) {
+                if (item instanceof com.shatteredpixel.shatteredpixeldungeon.items.food.Blandfruit
+                        && ((com.shatteredpixel.shatteredpixeldungeon.items.food.Blandfruit) item).potionAttrib == null) {
+                    GLog.w("洞渊神角不接受未调制的盲果！");
+                } else {
+                    Hero hero = Dungeon.hero;
+                    hero.sprite.operate(hero.pos);
+                    hero.busy();
+                    hero.spend(com.shatteredpixel.shatteredpixeldungeon.items.food.Food.TIME_TO_EAT);
+                    ((AbyssHorn) com.shatteredpixel.shatteredpixeldungeon.items.Item.curItem).gainFoodValue(((com.shatteredpixel.shatteredpixeldungeon.items.food.Food) item));
+                    item.detach(hero.belongings.backpack);
+                }
+            }
+        }
+    };
 
     @Override
-    public void storeInBundle(Bundle bundle) {
-        super.storeInBundle(bundle);
-        bundle.put(STORED, storedFoodEnergy);
+    protected ArtifactBuff passiveBuff() {
+        return new AbyssHornRecharge();
     }
 
-    @Override
-    public void restoreFromBundle(Bundle bundle) {
-        super.restoreFromBundle(bundle);
-
-        storedFoodEnergy = bundle.getInt(STORED);
-
-        updateChargeImage();
-    }
-
-    /**
-     * 神角被动充能 — 随英雄等级自动恢复充能
-     */
     public class AbyssHornRecharge extends ArtifactBuff {
-
         public void gainCharge(float levelPortion) {
             if (cursed || target.buff(MagicImmune.class) != null) return;
-
             if (charge < chargeCap) {
-                // 每级产生0.25x最大饥饿值充能，每级神角额外+0.125x，最多1.5x
                 float chargeGain = Hunger.STARVING * levelPortion * (0.25f + (0.125f * level()));
                 chargeGain *= RingOfEnergy.artifactChargeMultiplier(target);
-
-                // 每点充能 = 1/5 最大饥饿值
                 chargeGain /= Hunger.STARVING / 5;
                 partialCharge += chargeGain;
-
                 while (partialCharge >= 1) {
                     charge++;
                     partialCharge -= 1;
-
                     updateChargeImage();
                     updateQuickslot();
-
                     if (charge == chargeCap) {
                         GLog.p("洞渊神角充能已满！");
                         partialCharge = 0;
@@ -344,41 +314,22 @@ public class AbyssHorn extends Artifact {
         }
     }
 
-    /**
-     * 选择食物的物品选择器
-     */
-    protected static WndBag.ItemSelector itemSelector = new WndBag.ItemSelector() {
+    @Override
+    public void storeInBundle(Bundle bundle) {
+        super.storeInBundle(bundle);
+    }
 
-        @Override
-        public String textPrompt() {
-            return "选择要存入洞渊神角的食物";
-        }
+    @Override
+    public void restoreFromBundle(Bundle bundle) {
+        super.restoreFromBundle(bundle);
+        updateChargeImage();
+    }
 
-        @Override
-        public Class<? extends Bag> preferredBag() {
-            return Belongings.Backpack.class;
-        }
-
-        @Override
-        public boolean itemSelectable(Item item) {
-            return item instanceof Food;
-        }
-
-        @Override
-        public void onSelect(Item item) {
-            if (item != null && item instanceof Food) {
-                if (item instanceof Blandfruit && ((Blandfruit) item).potionAttrib == null) {
-                    GLog.w("洞渊神角不接受未调制的盲果！");
-                } else {
-                    Hero hero = Dungeon.hero;
-                    hero.sprite.operate(hero.pos);
-                    hero.busy();
-                    hero.spend(Food.TIME_TO_EAT);
-
-                    ((AbyssHorn) curItem).gainFoodValue(((Food) item));
-                    item.detach(hero.belongings.backpack);
-                }
-            }
-        }
-    };
+    @Override
+    public String actionName(String action, Hero hero) {
+        if (action.equals(AC_SNACK)) return "零食";
+        if (action.equals(AC_EAT)) return "进食";
+        if (action.equals(AC_STORE)) return "存入";
+        return super.actionName(action, hero);
+    }
 }
