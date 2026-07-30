@@ -80,7 +80,6 @@ public class WndHero extends WndTabbed {
 	private TalentsTab talents;
 	private BuffsTab buffs;
 	private TraitsTab traits;
-	private EquipTab equip;
 	private AdRewardTab adReward;
 
 	public static int lastIdx = 0;
@@ -108,9 +107,6 @@ public class WndHero extends WndTabbed {
 		traits.setRect(0, 0, WIDTH, HEIGHT);
 		traits.setupList();
 
-		equip = new EquipTab();
-		add( equip );
-		equip.setRect(0, 0, WIDTH, HEIGHT);
 
 		adReward = new AdRewardTab();
 		add( adReward );
@@ -151,17 +147,10 @@ public class WndHero extends WndTabbed {
 				if (selected) traits.setupList();
 			}
 		} );
-		add( new IconTab( Icons.get(Icons.BACKPACK) ) {
-			protected void select( boolean value ) {
-				super.select( value );
-				if (selected) lastIdx = 4;
-				equip.visible = equip.active = selected;
-			}
-		} );
 		add( new IconTab( Icons.get(Icons.GOLD) ) {
 			protected void select( boolean value ) {
 				super.select( value );
-				if (selected) lastIdx = 5;
+				if (selected) lastIdx = 4;
 				adReward.visible = adReward.active = selected;
 			}
 		} );
@@ -191,7 +180,6 @@ public class WndHero extends WndTabbed {
 		talents.layout();
 		buffs.layout();
 		traits.layout();
-		equip.layout();
 	}
 
 	private class StatsTab extends Group {
@@ -493,6 +481,8 @@ public class WndHero extends WndTabbed {
 
 		private void setupList() {
 			Component content = traitList.content();
+			// 安全保护：窗口已关闭或未激活时不再刷新
+			if (!isActive()) return;
 			content.clear();
 			slots.clear();
 
@@ -515,15 +505,16 @@ public class WndHero extends WndTabbed {
 		}
 
 		private int calculatePoints() {
-			// 从已收集词条中计算可分配点数（每层1点基础 + 额外奖励）
+			// 从已收集词条中计算可分配点数（每层1点基础 + 广告奖励额外点数）
 			int base = Dungeon.depth;
 			int spent = 0;
-						for (Trait t : Dungeon.traits.getCollectedTraits()) {
-							if (t == null) continue;
-							int lvl = t.getLevel();
+			for (Trait t : Dungeon.traits.getCollectedTraits()) {
+				if (t == null) continue;
+				int lvl = t.getLevel();
 				if (lvl > 0) spent += lvl;
 			}
-			return Math.max(0, base - spent);
+			int bonus = Dungeon.traits.getBonusPoints();
+			return Math.max(0, base + bonus - spent);
 		}
 
 		private void doUpgrade(Trait t, int qty) {
@@ -605,32 +596,58 @@ public class WndHero extends WndTabbed {
 				};
 				add(btnPlus);
 
-				// 颜色图标（10x10）
-				boolean isDegraded = t.isPositive() && t.getLevel() <= 0;
-				boolean isEffectivelyPositive = t.isPositive() && !isDegraded;
-				int color = isEffectivelyPositive ? 0x00FF00 : 0xFF0000;
-				colorIcon = new Image(TextureCache.createSolid(color));
-				colorIcon.hardlight(color);
+				// 颜色图标（占位，layout中刷新）
+				colorIcon = new Image(TextureCache.createSolid(0x888888));
 				colorIcon.width = 10;
 				colorIcon.height = 10;
 				add(colorIcon);
 
-				// 名称 + 等级
+				// 名称（占位文字，layout中刷新）
+				nameText = PixelScene.renderTextBlock("", 7);
+				nameText.maxWidth(90);
+				nameText.hardlight(Window.TITLE_COLOR);
+				add(nameText);
+
+				// 可点击区域：查看词条详情
+				com.watabou.noosa.PointerArea clickArea = new com.watabou.noosa.PointerArea(0, 0, 0, 0) {
+					@Override
+					public void onClick(com.watabou.input.PointerEvent event) {
+						if (t != null) {
+							com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.show(new WndInfoTrait(t));
+						}
+					}
+				};
+				clickArea.blockLevel = com.watabou.noosa.PointerArea.NEVER_BLOCK;
+				add(clickArea);
+				// 添加关闭按钮
+				com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton closeBtn = new com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton(
+						com.shatteredpixel.shatteredpixeldungeon.Chrome.Type.GREY_BUTTON_TR, "X", 5) {
+					@Override
+					protected void onClick() {
+						if (TraitsTab.this.isActive()) {
+							// 关闭按钮仅供 TraitSlot 内部使用
+						}
+					}
+				};
+			}
+
+			@Override
+			protected void layout() {
+				super.layout();
+				if (t == null) return;
+
+				// 刷新颜色图标和名称
+				boolean isDegraded = t.isPositive() && t.getLevel() <= 0;
+				boolean isEffectivelyPositive = t.isPositive() && !isDegraded;
+				colorIcon.hardlight(isEffectivelyPositive ? 0x00FF00 : 0xFF0000);
 				String levelStr;
 				if (isDegraded) {
 					levelStr = String.valueOf(t.getLevel());
 				} else {
 					levelStr = t.getLevel() > 0 ? "+" + t.getLevel() : String.valueOf(t.getLevel());
 				}
-				nameText = PixelScene.renderTextBlock(t.getName() + " Lv." + levelStr, 7);
-				nameText.maxWidth(90);
-				nameText.hardlight(color);
-				add(nameText);
-			}
+				nameText.text(t.getName() + " Lv." + levelStr);
 
-			@Override
-			protected void layout() {
-				super.layout();
 				// [-] 按钮 14px 宽，左对齐
 				btnMinus.setRect(x, y, 14, height);
 				// 颜色图标
@@ -645,95 +662,22 @@ public class WndHero extends WndTabbed {
 				PixelScene.align(nameText);
 				// [+] 按钮 14px 宽，右对齐
 				btnPlus.setRect(x + width - 14, y, 14, height);
-			}
-
-			protected boolean onClick(float x, float y) {
-				if (inside(x, y)) {
-					// 点击中间区域打开详情
-					GameScene.show(new WndInfoTrait(t));
-					return true;
+				// 调整点击区域仅覆盖中间名称区（排除左右 +/- 按钮）
+				for (com.watabou.noosa.Gizmo g : members) {
+					if (g instanceof com.watabou.noosa.PointerArea) {
+						com.watabou.noosa.PointerArea pa = (com.watabou.noosa.PointerArea) g;
+						pa.x = x + 16;
+						pa.y = y;
+						pa.width = width - 32;
+						pa.height = height;
+						break;
+					}
 				}
-				return false;
 			}
 		}
 	}
 
 	// ========== 装备Tab ==========
-
-	private class EquipTab extends Component {
-
-		private ScrollPane equipList;
-		private ArrayList<InventorySlot> slots = new ArrayList<>();
-
-		@Override
-		protected void createChildren() {
-			super.createChildren();
-
-			equipList = new ScrollPane(new Component()) {
-				@Override
-				public void onClick(float x, float y) {
-					for (InventorySlot s : slots) {
-						if (s.inside(x, y)) {
-							Item item = s.item();
-							if (item != null) {
-								GameScene.show(new WndInfoItem(item));
-							}
-							break;
-						}
-					}
-				}
-			};
-			add(equipList);
-		}
-
-		@Override
-		protected void layout() {
-			super.layout();
-			equipList.setRect(0, 0, width, height);
-
-			Component content = equipList.content();
-			content.clear();
-			slots.clear();
-
-			Belongings b = Dungeon.hero.belongings;
-
-			// 11个装备位：weapon, armor, artifact, secondWep, misc[0-3], ring[0-2]
-			Item[] items = new Item[]{
-				b.weapon, b.armor, b.artifact, b.secondWep,
-				b.misc[0], b.misc[1], b.misc[2], b.misc[3],
-				b.ring[0], b.ring[1], b.ring[2]
-			};
-
-			int cols = 4;
-			int slotSize = 27;
-			int gap = 2;
-			int startX = (int)((width - (cols * slotSize + (cols - 1) * gap)) / 2);
-
-			for (int i = 0; i < items.length; i++) {
-				int col = i % cols;
-				int row = i / cols;
-				int sx = startX + col * (slotSize + gap);
-				int sy = row * (slotSize + gap);
-
-				Item it = items[i];
-				InventorySlot slot;
-				if (it != null) {
-					slot = new InventorySlot(it);
-				} else {
-					slot = new InventorySlot(new WndBag.Placeholder(ItemSpriteSheet.SOMETHING));
-				}
-				slot.setRect(sx, sy, slotSize, slotSize);
-				content.add(slot);
-				slots.add(slot);
-			}
-
-			int totalRows = (items.length + cols - 1) / cols;
-			content.setSize(width, totalRows * (slotSize + gap));
-			equipList.setSize(width, equipList.height());
-		}
-	}
-
-	// ========== 广告奖励Tab ==========
 
 	private class AdRewardTab extends Component {
 
@@ -753,8 +697,7 @@ public class WndHero extends WndTabbed {
 
 			// 信息文本
 			infoText = PixelScene.renderTextBlock("观看激励视频可获得以下奖励之一：\n" +
-					"• 随机神器（TaiyiHolyGrail / AbyssHorn / ThiefSeal）\n" +
-					"• 词条点数 +6", 7);
+					"• 随机神器（太一圣杯 / 洞渊神角 / 盗圣之证）", 7);
 			infoText.maxWidth(WIDTH - 10);
 			add(infoText);
 
@@ -768,11 +711,7 @@ public class WndHero extends WndTabbed {
 			resultText.maxWidth(WIDTH - 10);
 			add(resultText);
 
-			// OAID文本
-			String oaid = AdManager.getOaid();
-			oaidText = PixelScene.renderTextBlock("OAID: " + (oaid.isEmpty() ? "不可用" : oaid), 6);
-			oaidText.maxWidth(WIDTH - 10);
-			add(oaidText);
+
 
 			// 观看广告按钮
 			btnWatchAd = new StyledButton(Chrome.Type.GREY_BUTTON_TR, "观看广告获取奖励", 7) {
@@ -791,13 +730,11 @@ public class WndHero extends WndTabbed {
 			infoText.setPos(5, 5);
 			statusText.setPos(5, infoText.bottom() + 4);
 			resultText.setPos(5, statusText.bottom() + 4);
-			oaidText.setPos(5, resultText.bottom() + 4);
-
 			btnWatchAd.setRect(
 					(width - 100) / 2,
-					oaidText.bottom() + 8,
+					resultText.bottom() + 12,
 					100,
-					20
+					22
 			);
 
 			updateDisplay();
@@ -816,19 +753,19 @@ public class WndHero extends WndTabbed {
 				statusText.text("广告已就绪，点击观看");
 				btnWatchAd.enable(true);
 				btnWatchAd.text("观看广告获取奖励");
-			} else if (dailyCount >= 3) {
-				statusText.text("今日次数已用完（3/3）");
+			} else if (dailyCount >= 11) {
+				statusText.text("今日次数已用完（11/11）");
 				btnWatchAd.enable(false);
 				btnWatchAd.text("已用完");
 			} else {
-				statusText.text("准备就绪（今日 " + dailyCount + "/3）");
+				statusText.text("准备就绪（今日 " + dailyCount + "/11）");
 				btnWatchAd.enable(true);
 				btnWatchAd.text("观看广告获取奖励");
 			}
 		}
 
 		private void watchAd() {
-			if (dailyCount >= 3) {
+			if (dailyCount >= 11) {
 				resultText.text("今日次数已用完！");
 				return;
 			}
@@ -851,6 +788,10 @@ public class WndHero extends WndTabbed {
 					adReady = false;
 					onAdReward();
 					updateDisplay();
+					// 自动加载下一个广告（如果次数未用完）
+					if (dailyCount < 11) {
+						AdManager.loadRewardAd();
+					}
 				}
 
 				@Override
@@ -862,53 +803,52 @@ public class WndHero extends WndTabbed {
 				}
 			});
 
-			adReady = true;
+			if (dailyCount < 11) {
+				adReady = true;
+			}
 		}
 
 		private void onAdReward() {
 			// 随机选择奖励
-			int roll = Random.Int(4);
 			String rewardMsg;
-			switch (roll) {
-				case 0: {
-					// TaiyiHolyGrail
-					TaiyiHolyGrail grail = new TaiyiHolyGrail();
-					if (grail.collect(Dungeon.hero.belongings.backpack)) {
-						rewardMsg = "获得 TaiyiHolyGrail！";
-					} else {
-						Dungeon.level.drop(grail, Dungeon.hero.pos);
-						rewardMsg = "背包已满，TaiyiHolyGrail 掉落在脚下！";
-					}
-					break;
+			// 收集玩家已有神器(防止重复)
+			java.util.ArrayList<String> ownedArtifacts = new java.util.ArrayList<>();
+			for (com.shatteredpixel.shatteredpixeldungeon.items.Item item : Dungeon.hero.belongings.backpack.items) {
+				ownedArtifacts.add(item.getClass().getName());
+			}
+			// 同时也检查已装备的
+			if (Dungeon.hero.belongings.artifact != null)
+				ownedArtifacts.add(Dungeon.hero.belongings.artifact.getClass().getName());
+
+			// 构建可用的神器奖励列表
+			java.util.ArrayList<String> availableArtifacts = new java.util.ArrayList<>();
+			if (!ownedArtifacts.contains(TaiyiHolyGrail.class.getName())) availableArtifacts.add("TaiyiHolyGrail");
+			if (!ownedArtifacts.contains(AbyssHorn.class.getName())) availableArtifacts.add("AbyssHorn");
+			if (!ownedArtifacts.contains(ThiefSeal.class.getName())) availableArtifacts.add("ThiefSeal");
+
+			int totalOptions = availableArtifacts.size() + 1; // +1 for trait points
+			int roll = Random.Int(totalOptions);
+			if (roll < availableArtifacts.size()) {
+				// 给予未持有的神器
+				String chosen = availableArtifacts.get(roll);
+				com.shatteredpixel.shatteredpixeldungeon.items.Item artifactItem;
+				String name;
+				switch (chosen) {
+					case "TaiyiHolyGrail": artifactItem = new TaiyiHolyGrail(); name = "TaiyiHolyGrail"; break;
+					case "AbyssHorn": artifactItem = new AbyssHorn(); name = "AbyssHorn"; break;
+					default: artifactItem = new ThiefSeal(); name = "ThiefSeal"; break;
 				}
-				case 1: {
-					// AbyssHorn
-					AbyssHorn horn = new AbyssHorn();
-					if (horn.collect(Dungeon.hero.belongings.backpack)) {
-						rewardMsg = "获得 AbyssHorn！";
-					} else {
-						Dungeon.level.drop(horn, Dungeon.hero.pos);
-						rewardMsg = "背包已满，AbyssHorn 掉落在脚下！";
-					}
-					break;
+				if (artifactItem.collect(Dungeon.hero.belongings.backpack)) {
+					rewardMsg = "获得 " + name + "！";
+				} else {
+					Dungeon.level.drop(artifactItem, Dungeon.hero.pos);
+					rewardMsg = "背包已满，" + name + " 掉落在脚下！";
 				}
-				case 2: {
-					// ThiefSeal
-					ThiefSeal seal = new ThiefSeal();
-					if (seal.collect(Dungeon.hero.belongings.backpack)) {
-						rewardMsg = "获得 ThiefSeal！";
-					} else {
-						Dungeon.level.drop(seal, Dungeon.hero.pos);
-						rewardMsg = "背包已满，ThiefSeal 掉落在脚下！";
-					}
-					break;
-				}
-				case 3:
-				default: {
-					// 词条点数+6
-					rewardMsg = "获得词条点数 +6！";
-					break;
-				}
+			} else {
+				// 三个神器都已获得 → 获得可分配词条点数
+				int pts = 3 + Dungeon.depth / 5;
+				Dungeon.traits.addBonusPoints(pts);
+				rewardMsg = "三个神器已集齐！获得 " + pts + " 点可分配词条点数！";
 			}
 			resultText.text(rewardMsg);
 			GLog.p(rewardMsg);
