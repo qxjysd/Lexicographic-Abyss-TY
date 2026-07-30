@@ -45,6 +45,7 @@ public class HeroTraits implements Bundlable {
 
 	private ArrayList<Trait> collectedTraits = new ArrayList<>();
 	private HashMap<Integer, Integer> traitCounts = new HashMap<>();
+	private int bonusPoints = 0;
 
 	/**
 	 * 根据当前楼层深度生成并授予一个词条。
@@ -70,11 +71,15 @@ public class HeroTraits implements Bundlable {
 		return traitCounts;
 	}
 
+	public int getBonusPoints() { return bonusPoints; }
+	public void addBonusPoints(int points) { this.bonusPoints += points; }
+
 	// ========== Bundle 序列化 / 反序列化 ==========
 
 	@Override
 	public void storeInBundle(Bundle bundle) {
 		bundle.put(COLLECTED_TRAITS, collectedTraits);
+		bundle.put("bonus_points", bonusPoints);
 
 		Bundle countsBundle = new Bundle();
 		for (int key : traitCounts.keySet()) {
@@ -96,6 +101,7 @@ public class HeroTraits implements Bundlable {
 				} else {
 			collectedTraits = new ArrayList<>();
 		}
+		bonusPoints = bundle.getInt("bonus_points");
 
 		// 恢复词条统计
 		if (bundle.contains(TRAIT_COUNTS)) {
