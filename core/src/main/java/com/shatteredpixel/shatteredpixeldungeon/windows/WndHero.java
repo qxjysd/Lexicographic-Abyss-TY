@@ -608,19 +608,19 @@ public class WndHero extends WndTabbed {
 				nameText.hardlight(Window.TITLE_COLOR);
 				add(nameText);
 
-				// 可点击区域：查看词条详情
-				com.watabou.noosa.PointerArea clickArea = new com.watabou.noosa.PointerArea(0, 0, 0, 0) {
+				// 可点击区域：查看词条详情（使用Button确保可靠点击）
+				com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton clickBtn = new com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton(
+						com.shatteredpixel.shatteredpixeldungeon.Chrome.Type.GREY_BUTTON_TR, " ", 5) {
 					@Override
-										public void onClick(com.watabou.input.PointerEvent event) {
-											// 仅在词条列表可见且父窗口未关闭时响应
-											if (t != null && TraitsTab.this.visible && TraitsTab.this.isActive()
-													&& TraitsTab.this.parent != null && TraitsTab.this.parent.visible) {
-												com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.show(new WndInfoTrait(t));
+					protected void onClick() {
+						super.onClick();
+						if (t != null) {
+							com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.show(new WndInfoTrait(t));
 						}
 					}
 				};
-				clickArea.blockLevel = com.watabou.noosa.PointerArea.NEVER_BLOCK;
-				add(clickArea);
+				clickBtn.textColor(0x00000000); // 完全透明
+				add(clickBtn);
 			}
 
 			@Override
@@ -654,15 +654,15 @@ public class WndHero extends WndTabbed {
 				PixelScene.align(nameText);
 				// [+] 按钮 14px 宽，右对齐
 				btnPlus.setRect(x + width - 14, y, 14, height);
-				// 调整点击区域仅覆盖中间名称区（排除左右 +/- 按钮）
+				// 调整点击按钮仅覆盖中间名称区
 				for (com.watabou.noosa.Gizmo g : members) {
-					if (g instanceof com.watabou.noosa.PointerArea) {
-												com.watabou.noosa.PointerArea pa = (com.watabou.noosa.PointerArea) g;
-												pa.x = 16;
-												pa.y = 0;
-												pa.width = Math.max(10, width - 32);
-												pa.height = height;
-						break;
+					if (g instanceof com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton) {
+						com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton btn = (com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton) g;
+						// 只调整透明的点击按钮（不触碰 +/- 按钮）
+						if (btn.text().equals(" ")) {
+							btn.setRect(16, 0, Math.max(10, width - 32), height);
+							break;
+						}
 					}
 				}
 			}
@@ -810,9 +810,13 @@ public class WndHero extends WndTabbed {
 			for (com.shatteredpixel.shatteredpixeldungeon.items.Item item : Dungeon.hero.belongings.backpack.items) {
 				ownedArtifacts.add(item.getClass().getName());
 			}
-			// 同时也检查已装备的
+			// 检查已装备的主神器槽
 			if (Dungeon.hero.belongings.artifact != null)
 				ownedArtifacts.add(Dungeon.hero.belongings.artifact.getClass().getName());
+			// 检查所有 misc 装备槽（配件/戒指等也可能有神器）
+			for (com.shatteredpixel.shatteredpixeldungeon.items.KindofMisc m : Dungeon.hero.belongings.misc) {
+				if (m != null) ownedArtifacts.add(m.getClass().getName());
+			}
 
 			// 构建可用的神器奖励列表
 			java.util.ArrayList<String> availableArtifacts = new java.util.ArrayList<>();
