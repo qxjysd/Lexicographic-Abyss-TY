@@ -1543,6 +1543,10 @@ public class Hero extends Char {
 						((MasterThievesArmband) artifactItem).onHeroAttack(this, enemy, damage);
 					} else if (artifactItem instanceof AbyssHorn) {
 						damage = ((AbyssHorn) artifactItem).onHeroAttack(this, enemy, damage);
+					} else if (artifactItem instanceof TaiyiHolyGrail) {
+						damage = ((TaiyiHolyGrail) artifactItem).onHeroAttack(this, enemy, damage);
+					} else if (artifactItem instanceof ThiefSeal) {
+						((ThiefSeal) artifactItem).onHeroAttack(this, enemy, damage);
 					}
 				}
 				for (KindofMisc miscItem : belongings.misc) {
@@ -1553,9 +1557,13 @@ public class Hero extends Char {
 							((MasterThievesArmband) miscItem).onHeroAttack(this, enemy, damage);
 						} else if (miscItem instanceof AbyssHorn) {
 							damage = ((AbyssHorn) miscItem).onHeroAttack(this, enemy, damage);
-												}
-											}
-										}
+						} else if (miscItem instanceof TaiyiHolyGrail) {
+							damage = ((TaiyiHolyGrail) miscItem).onHeroAttack(this, enemy, damage);
+						} else if (miscItem instanceof ThiefSeal) {
+							((ThiefSeal) miscItem).onHeroAttack(this, enemy, damage);
+						}
+					}
+				}
 
 								if (wep != null) {
 			damage = wep.proc( this, enemy, damage );
