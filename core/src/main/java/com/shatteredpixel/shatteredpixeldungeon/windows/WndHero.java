@@ -418,6 +418,7 @@ public class WndHero extends WndTabbed {
 		private int quantity = 1; // 默认单次调整数量
 		private ScrollPane traitList;
 		private ArrayList<TraitSlot> slots = new ArrayList<>();
+		private com.watabou.noosa.PointerArea globalClick; // 词条列表全局点击区(重建前需destroy,避免监听者泄漏)
 		private int traitPoints = 0;
 
 		@Override
@@ -483,14 +484,19 @@ public class WndHero extends WndTabbed {
 			Component content = traitList.content();
 			// 双重安全保护：content 和其父级必须有效
 			if (!isActive() || content == null || content.parent == null) return;
+			// 显式销毁旧全局点击区(Group.clear() 不调用 destroy(),否则 PointerEvent 静态监听列表泄漏)
+			if (globalClick != null) {
+				globalClick.destroy();
+				globalClick = null;
+			}
 			content.clear();
 			slots.clear();
 
 			float pos = 0;
-						ArrayList<Trait> collected = Dungeon.traits.getCollectedTraits();
-						for (Trait t : collected) {
-							if (t == null) continue;
-							TraitSlot slot = new TraitSlot(t);
+			ArrayList<Trait> collected = Dungeon.traits.getCollectedTraits();
+			for (Trait t : collected) {
+				if (t == null) continue;
+				TraitSlot slot = new TraitSlot(t);
 				slot.setRect(0, pos, WIDTH, SLOT_HEIGHT);
 				content.add(slot);
 				slots.add(slot);
@@ -498,6 +504,34 @@ public class WndHero extends WndTabbed {
 			}
 			content.setSize(traitList.width(), pos);
 			traitList.setSize(traitList.width(), traitList.height());
+
+			// 添加全局点击处理器（content.clear() 已移除旧的）
+			// 命中区域只覆盖名称/图标区(x=16..WIDTH-16),避开左右 [+]/[-] 按钮
+			final float totalHeight = pos;
+			globalClick = new com.watabou.noosa.PointerArea(16, 0, WIDTH - 32, totalHeight) {
+				@Override
+				protected void onPointerUp(com.watabou.input.PointerEvent event) {
+					// 拖动距离超过阈值视为滚动操作,取消点击,避免滚动结束误弹详情
+					if (com.watabou.utils.PointF.distance(event.current, event.start) > PixelScene.defaultZoom * 8) {
+						curEvent = null;
+					}
+				}
+				@Override
+				public void onClick(com.watabou.input.PointerEvent event) {
+					if (!isActive()) return;
+					// 将屏幕坐标转换为词条列表内容坐标（抵消窗口偏移、缩放与滚动偏移）
+					com.watabou.utils.PointF p = camera().screenToCamera((int) event.current.x, (int) event.current.y);
+					int slotIdx = (int)(p.y / SLOT_HEIGHT);
+					if (slotIdx >= 0 && slotIdx < slots.size()) {
+						Trait clicked = slots.get(slotIdx).t;
+						if (clicked != null) {
+							com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.show(new WndInfoTrait(clicked));
+						}
+					}
+				}
+			};
+			globalClick.blockLevel = com.watabou.noosa.PointerArea.NEVER_BLOCK;
+			content.add(globalClick);
 
 			// 刷新点数显示
 			traitPoints = calculatePoints();
@@ -607,20 +641,6 @@ public class WndHero extends WndTabbed {
 				nameText.maxWidth(90);
 				nameText.hardlight(Window.TITLE_COLOR);
 				add(nameText);
-
-				// 可点击区域：查看词条详情（使用Button确保可靠点击）
-				com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton clickBtn = new com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton(
-						com.shatteredpixel.shatteredpixeldungeon.Chrome.Type.GREY_BUTTON_TR, " ", 5) {
-					@Override
-					protected void onClick() {
-						super.onClick();
-						if (t != null) {
-							com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene.show(new WndInfoTrait(t));
-						}
-					}
-				};
-				clickBtn.textColor(0x00000000); // 完全透明
-				add(clickBtn);
 			}
 
 			@Override
@@ -654,17 +674,6 @@ public class WndHero extends WndTabbed {
 				PixelScene.align(nameText);
 				// [+] 按钮 14px 宽，右对齐
 				btnPlus.setRect(x + width - 14, y, 14, height);
-				// 调整点击按钮仅覆盖中间名称区
-				for (com.watabou.noosa.Gizmo g : members) {
-					if (g instanceof com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton) {
-						com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton btn = (com.shatteredpixel.shatteredpixeldungeon.ui.StyledButton) g;
-						// 只调整透明的点击按钮（不触碰 +/- 按钮）
-						if (btn.text().equals(" ")) {
-							btn.setRect(16, 0, Math.max(10, width - 32), height);
-							break;
-						}
-					}
-				}
 			}
 		}
 	}
@@ -683,9 +692,26 @@ public class WndHero extends WndTabbed {
 		private boolean adLoading = false;
 		private boolean adReady = false;
 
+		// 从持久化存储读取今日广告次数（跨日期自动重置）
+		private void loadDailyCount() {
+			int today = (int)(System.currentTimeMillis() / 86400000L);
+			if (com.shatteredpixel.shatteredpixeldungeon.SPDSettings.adDay() != today) {
+				com.shatteredpixel.shatteredpixeldungeon.SPDSettings.adDay(today);
+				com.shatteredpixel.shatteredpixeldungeon.SPDSettings.adCount(0);
+				dailyCount = 0;
+			} else {
+				dailyCount = com.shatteredpixel.shatteredpixeldungeon.SPDSettings.adCount();
+			}
+		}
+
+		private void saveDailyCount() {
+			com.shatteredpixel.shatteredpixeldungeon.SPDSettings.adCount(dailyCount);
+		}
+
 		@Override
 		protected void createChildren() {
 			super.createChildren();
+			loadDailyCount();
 
 			// 信息文本
 			infoText = PixelScene.renderTextBlock("观看激励视频可获得以下奖励之一：\n" +
@@ -777,6 +803,7 @@ public class WndHero extends WndTabbed {
 				public void onReward() {
 					// 广告播放完成，发放奖励
 					dailyCount++;
+					saveDailyCount();
 					adLoading = false;
 					adReady = false;
 					onAdReward();

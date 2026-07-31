@@ -207,7 +207,7 @@ public class QuizSystem implements Bundlable {
 
 	private static void randomDebuff(Hero hero, StringBuilder msg) {
 		float r = Random.Float();
-		// 8.89% each, total 80% (remaining 20% = no debuff)
+		// 8.89% each × 8 = 71.12%, remaining 28.88% = no debuff
 		if (r < 0.0889f) {
 			com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff.affect(hero, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Poison.class).set(6 + Dungeon.depth);
 			msg.append(" ☠️中毒6回合");

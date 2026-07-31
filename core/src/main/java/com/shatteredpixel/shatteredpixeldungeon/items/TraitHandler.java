@@ -125,7 +125,7 @@ public class TraitHandler {
     		Buff.affect(enemy, Charm.class, 3f);
     	}
     	if (amokChance > 0 && enemy.isAlive() && Random.Float() < amokChance) {
-    		Buff.affect(enemy, Vertigo.class, 2f);
+    		Buff.affect(enemy, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Amok.class, 2f);
     	}
 
     	// 正面: 即死(对Boss无效，概率上限15%)

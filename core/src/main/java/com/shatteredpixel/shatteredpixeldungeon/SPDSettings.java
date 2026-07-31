@@ -43,6 +43,13 @@ public class SPDSettings extends GameSettings {
 	//Version info
 	
 	public static final String KEY_VERSION      = "version";
+	public static final String KEY_AD_COUNT    = "ad_count";
+	public static final String KEY_AD_DAY      = "ad_day";
+	
+	public static int adCount() { return getInt( KEY_AD_COUNT, 0 ); }
+	public static void adCount( int value ) { put( KEY_AD_COUNT, value ); }
+	public static int adDay() { return getInt( KEY_AD_DAY, 0 ); }
+	public static void adDay( int value ) { put( KEY_AD_DAY, value ); }
 	
 	public static void version( int value)  {
 		put( KEY_VERSION, value );

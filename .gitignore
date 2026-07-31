@@ -17,3 +17,4 @@
 *.apk
 *.jar
 *.class
+core/build/

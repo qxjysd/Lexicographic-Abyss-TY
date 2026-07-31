@@ -111,7 +111,7 @@ public class WndBag extends WndTabbed {
 		nCols = PixelScene.landscape() ? COLS_L : COLS_P;
 		nRows = (int)Math.ceil(25/(float)nCols); //we expect to lay out 25 slots in all cases
 
-		int equipRows = 2; // 装备行数(8件装备)
+		int equipRows = 2; // 装备行数(10件装备:武器/护甲/神器/4杂项/3戒指)
 		int windowWidth = slotWidth * nCols + SLOT_MARGIN * (nCols - 1);
 		int windowHeight = TITLE_HEIGHT + slotHeight * (nRows + equipRows) + SLOT_MARGIN * (nRows + equipRows - 1);
 
@@ -260,8 +260,9 @@ public class WndBag extends WndTabbed {
 		placeItem( stuff.misc[2] != null ? (Item)stuff.misc[2] : new Placeholder( ItemSpriteSheet.SOMETHING ) );
 		placeItem( stuff.misc[3] != null ? (Item)stuff.misc[3] : new Placeholder( ItemSpriteSheet.SOMETHING ) );
 		placeItem( stuff.ring[1] != null ? (Item)stuff.ring[1] : new Placeholder( ItemSpriteSheet.RING_HOLDER ) );
+		placeItem( stuff.ring[2] != null ? (Item)stuff.ring[2] : new Placeholder( ItemSpriteSheet.RING_HOLDER ) );
 
-		int equipped = 9;
+		int equipped = 10;
 
 		//the container itself if it's not the root backpack
 		if (container != Dungeon.hero.belongings.backpack){
