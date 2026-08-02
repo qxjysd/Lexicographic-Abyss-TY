@@ -603,19 +603,20 @@ public class TraitLibrary {
 
 		if (isPositive) {
 			int posLevel = floorDepth / 50 + 1;
-			if (posLevel > 10) posLevel = 10;
+			if (posLevel > 50) posLevel = 50;
 			level = posLevel;
 		} else {
-			int negLevel = floorDepth / 100 + 1;
-			if (negLevel > 5) negLevel = 5;
-			level = negLevel;
+			// 负面词条用负等级表示（正等级=正面效果，负等级=负面效果），与正等级对称
+			int negLevel = floorDepth / 50 + 1;
+			if (negLevel > 50) negLevel = 50;
+			level = -negLevel;
 		}
 
 		float effectValue;
 		if (isPositive) {
 			effectValue = level * 0.02f;
 		} else {
-			effectValue = level * -0.03f;
+			effectValue = level * 0.03f;
 		}
 
 		return new Trait(
@@ -648,7 +649,8 @@ public class TraitLibrary {
 				if (t.id == id) {
 					float effectPct = 1 * 3;
 					String desc = String.format(t.descTemplate, effectPct);
-					return new Trait(t.id, t.name, desc, 1, false, t.effectType, -0.03f);
+					// 负面词条初始为 -1 级（负面效果）
+					return new Trait(t.id, t.name, desc, -1, false, t.effectType, -0.03f);
 				}
 			}
 		}

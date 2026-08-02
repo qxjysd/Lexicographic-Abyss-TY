@@ -575,8 +575,8 @@ public class WndHero extends WndTabbed {
 			for (int i = 0; i < qty; i++) {
 				// 降级前检查：已经是最低等级则停止
 				if (t.getLevel() <= t.getMinLevel()) break;
-				// 如果是正面词条从正等级降到0或以下，应返还点数
-				if (t.isPositive() && t.getLevel() > 0) {
+				// 词条从正等级降到0或以下，应返还点数（calculatePoints中自动计算）
+				if (t.getLevel() > 0) {
 					// 返还点数将在calculatePoints中自动计算
 				}
 				if (t.downgrade()) {
@@ -648,9 +648,9 @@ public class WndHero extends WndTabbed {
 				super.layout();
 				if (t == null) return;
 
-				// 刷新颜色图标和名称
-				boolean isDegraded = t.isPositive() && t.getLevel() <= 0;
-				boolean isEffectivelyPositive = t.isPositive() && !isDegraded;
+				// 刷新颜色图标和名称（效果方向由等级符号决定）
+				boolean isDegraded = t.getLevel() <= 0;
+				boolean isEffectivelyPositive = t.getLevel() > 0;
 				colorIcon.hardlight(isEffectivelyPositive ? 0x00FF00 : 0xFF0000);
 				String levelStr;
 				if (isDegraded) {

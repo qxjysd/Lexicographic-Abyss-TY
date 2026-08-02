@@ -48,10 +48,6 @@ import java.util.ArrayList;
 
 public class TraitHandler {
 
-    // ===== 概率效果上限 =====
-    // 概率型效果（CRIT/TERROR/SLEEP等）最大不超过15%，防止过于OP
-    private static final float MAX_PROBABILITY = 0.15f;
-
     // ===== 英雄属性加成（正负都生效：正面增益，负面减益） =====
     public static float getAttackBonus(Hero hero) {
         return sumEffect(hero, "ATK", false);
@@ -81,25 +77,24 @@ public class TraitHandler {
         return sumEffect(hero, "REGEN", false);
     }
 
-    // ===== 对敌效果（仅正面词条生效，带概率上限） =====
+    // ===== 对敌效果（仅正面词条生效，不设效果上限） =====
     public static float getLifestealPercent(Hero hero) {
-        return Math.min(MAX_PROBABILITY, sumEffect(hero, "LIFESTEAL", true));
+        return sumEffect(hero, "LIFESTEAL", true);
     }
     public static float getThornsPercent(Hero hero) {
-        // 荆棘上限略高，因为是被动反伤
-        return Math.min(0.25f, sumEffect(hero, "THORNS", true));
+        return sumEffect(hero, "THORNS", true);
     }
     public static float getCritChance(Hero hero) {
-        return Math.min(MAX_PROBABILITY, sumEffect(hero, "CRIT", true));
+        return sumEffect(hero, "CRIT", true);
     }
     public static float getLootBonus(Hero hero) {
-        return Math.min(MAX_PROBABILITY * 2, sumEffect(hero, "LOOT", true) + sumEffect(hero, "GOLD", true));
+        return sumEffect(hero, "LOOT", true) + sumEffect(hero, "GOLD", true);
     }
     public static float getExpBonus(Hero hero) {
-        return Math.min(MAX_PROBABILITY * 2, sumEffect(hero, "EXP", true));
+        return sumEffect(hero, "EXP", true);
     }
 
-    // ===== 攻击触发（概率效果统一封顶15%） =====
+    // ===== 攻击触发（效果不设上限） =====
     public static int onAttackProc(Hero hero, Char enemy, int damage) {
     	int extraDmg = 0;
 
@@ -109,7 +104,7 @@ public class TraitHandler {
     	extraDmg += (int)(damage * sumEffect(hero, "BURN", true));
     	extraDmg += (int)(damage * sumEffect(hero, "FROST", true));
 
-    	// 正面: 恐惧/睡眠/魅惑/混乱 → 对敌施加控制（概率上限15%）
+    		// 正面: 恐惧/睡眠/魅惑/混乱 → 对敌施加控制（不设概率上限）
     	float terrorChance = cappedProb(hero, "TERROR");
     	float sleepChance = cappedProb(hero, "SLEEP");
     	float charmChance = cappedProb(hero, "CHARM");
@@ -128,8 +123,8 @@ public class TraitHandler {
     		Buff.affect(enemy, com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Amok.class, 2f);
     	}
 
-    	// 正面: 即死(对Boss无效，概率上限15%)
-    	float instakillChance = cappedProb(hero, "INSTAKILL");
+    		// 正面: 即死(对Boss无效)
+    		float instakillChance = cappedProb(hero, "INSTAKILL");
     	if (instakillChance > 0 && enemy.isAlive() && Random.Float() < instakillChance) {
     		if (enemy.properties().contains(Char.Property.BOSS)) {
     			extraDmg += (int)(damage * 0.5f);
@@ -138,15 +133,15 @@ public class TraitHandler {
     		}
     	}
 
-    	// 正面: 残废敌人（概率上限15%）
-    	float crippleChance = cappedProb(hero, "CRIPPLE");
+    		// 正面: 残废敌人
+    		float crippleChance = cappedProb(hero, "CRIPPLE");
     	if (crippleChance > 0 && enemy.isAlive() && Random.Float() < crippleChance) {
     		Buff.affect(enemy, Cripple.class, 3f);
     		Buff.affect(enemy, Slow.class, 3f);
     	}
 
-    	// 正面: 腐蚀敌人（概率上限15%）
-    	float corrosionChance = cappedProb(hero, "CORROSION");
+    		// 正面: 腐蚀敌人
+    		float corrosionChance = cappedProb(hero, "CORROSION");
     	if (corrosionChance > 0 && enemy.isAlive() && Random.Float() < corrosionChance) {
     		Buff.affect(enemy, Corrosion.class).set(3f, (int)(damage * 0.25f));
     		Buff.affect(enemy, Ooze.class).set(3f);
@@ -247,24 +242,24 @@ public class TraitHandler {
     		hero.damage((int)(damage * Math.abs(selfThorns)), hero);
     	}
 
-    	// 概率型反噬（仅负面净效果，封顶15%）
-    	float selfTerror = negativeOnly(hero, "TERROR");
-    	float selfSleep = negativeOnly(hero, "SLEEP");
-    	float selfCharm = negativeOnly(hero, "CHARM");
-    	float selfAmok = negativeOnly(hero, "AMOK");
+    		// 概率型反噬（仅负面净效果，不设上限）
+    		float selfTerror = negativeOnly(hero, "TERROR");
+    		float selfSleep = negativeOnly(hero, "SLEEP");
+    		float selfCharm = negativeOnly(hero, "CHARM");
+    		float selfAmok = negativeOnly(hero, "AMOK");
 
-    	if (selfTerror < 0 && hero.isAlive() && Random.Float() < Math.min(MAX_PROBABILITY, Math.abs(selfTerror))) {
-    		Buff.affect(hero, Terror.class, 2f);
-    	}
-    	if (selfSleep < 0 && hero.isAlive() && Random.Float() < Math.min(MAX_PROBABILITY, Math.abs(selfSleep))) {
-    		Buff.affect(hero, Sleep.class, 2f);
-    	}
-    	if (selfCharm < 0 && hero.isAlive() && Random.Float() < Math.min(MAX_PROBABILITY, Math.abs(selfCharm))) {
-    		Buff.affect(hero, Charm.class, 2f);
-    	}
-    	if (selfAmok < 0 && hero.isAlive() && Random.Float() < Math.min(MAX_PROBABILITY, Math.abs(selfAmok))) {
-    		Buff.affect(hero, Vertigo.class, 2f);
-    	}
+    		if (selfTerror < 0 && hero.isAlive() && Random.Float() < Math.abs(selfTerror)) {
+    			Buff.affect(hero, Terror.class, 2f);
+    		}
+    		if (selfSleep < 0 && hero.isAlive() && Random.Float() < Math.abs(selfSleep)) {
+    			Buff.affect(hero, Sleep.class, 2f);
+    		}
+    		if (selfCharm < 0 && hero.isAlive() && Random.Float() < Math.abs(selfCharm)) {
+    			Buff.affect(hero, Charm.class, 2f);
+    		}
+    		if (selfAmok < 0 && hero.isAlive() && Random.Float() < Math.abs(selfAmok)) {
+    			Buff.affect(hero, Vertigo.class, 2f);
+    		}
     }
 
     // ===== 受击触发 =====
@@ -298,11 +293,11 @@ public class TraitHandler {
         return cappedProb(hero, "LEVITATE");
     }
     public static float getCleanseChance(Hero hero) {
-        return Math.min(MAX_PROBABILITY, sumEffect(hero, "CLEANSE", true));
+        return sumEffect(hero, "CLEANSE", true);
     }
 
-    // ===== 概率上限辅助 =====
-    // 概率型效果统一封顶15%，负数（负面反噬）取绝对值后再封顶
+    // ===== 概率辅助 =====
+    // 效果不设上限：概率型效果直接返回累计值（超过100%即必触发）
 
     // 计算仅负面净效果（all - positive），用于反噬判定
     private static float negativeOnly(Hero hero, String type) {
@@ -311,11 +306,11 @@ public class TraitHandler {
 
     private static float cappedProb(Hero hero, String type) {
         float raw = sumEffect(hero, type, true);
-        if (raw >= 0) return Math.min(MAX_PROBABILITY, raw);
+        if (raw >= 0) return raw;
         // 负面：取和的绝对值（负面值原本就是负数）
         float neg = sumEffect(hero, type, false);
         if (neg >= 0) return 0; // 没有负面净效果
-        return Math.min(MAX_PROBABILITY, Math.abs(neg));
+        return Math.abs(neg);
     }
 
     // ===== 内部辅助 =====
@@ -344,13 +339,14 @@ public class TraitHandler {
         for (Trait t : traits) {
             if (t == null) continue;
             if (t.getEffectType().equals(type)) {
-                if (positiveOnly && !t.isPositive()) continue;
+                // 效果方向由等级符号决定：只累计正面效果（正等级增益）
+                if (positiveOnly && t.getActualEffect() <= 0) continue;
                 total += t.getActualEffect();
             }
-            // 负面MISC词条（"全属性降低"）仅叠加到核心属性上
+            // 负面MISC词条（"全属性降低"，等级为负）仅叠加到核心属性上
             if (!type.equals("MISC")
                 && t.getEffectType().equals("MISC")
-                && !t.isPositive()
+                && t.getActualEffect() < 0
                 && !positiveOnly
                 && (type.equals("ATK") || type.equals("DEF") || type.equals("HP")
                     || type.equals("SPD") || type.equals("DODGE") || type.equals("DEX")

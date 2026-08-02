@@ -45,8 +45,8 @@ public class WndInfoTrait extends Window {
 
         IconTitle titlebar = new IconTitle();
 
-        boolean isDegraded = trait.isPositive() && trait.getLevel() <= 0;
-        boolean isEffectivelyPositive = trait.isPositive() && !isDegraded;
+        boolean isDegraded = trait.getLevel() <= 0;
+        boolean isEffectivelyPositive = trait.getLevel() > 0;
         int color = isEffectivelyPositive ? 0xFF44CC44 : 0xFFCC4444;
 
         Image icon = new Image(TextureCache.createSolid(color));
@@ -84,17 +84,17 @@ public class WndInfoTrait extends Window {
         txtInfo.setPos(titlebar.left(), titlebar.bottom() + 2 * GAP);
         add(txtInfo);
 
-        // 等级信息
+        // 等级信息（效果方向由等级符号决定）
         RenderedTextBlock txtLevel;
-        if (isDegraded) {
+        if (trait.getLevel() < 0) {
             txtLevel = PixelScene.renderTextBlock(
-                    "降级词条 · 等级 " + trait.getLevel() + "（效果反转）", 6);
-        } else if (trait.isPositive()) {
+                    "负面效果 · 等级 " + trait.getLevel() + "（对英雄有害）", 6);
+        } else if (trait.getLevel() > 0) {
             txtLevel = PixelScene.renderTextBlock(
-                    "正面词条 · 等级 " + trait.getLevel(), 6);
+                    "正面效果 · 等级 " + trait.getLevel(), 6);
         } else {
             txtLevel = PixelScene.renderTextBlock(
-                    "负面词条 · 等级 " + Math.abs(trait.getLevel()), 6);
+                    "无效果 · 等级 0", 6);
         }
         txtLevel.maxWidth(WIDTH);
         txtLevel.setPos(titlebar.left(), txtInfo.bottom() + GAP);
