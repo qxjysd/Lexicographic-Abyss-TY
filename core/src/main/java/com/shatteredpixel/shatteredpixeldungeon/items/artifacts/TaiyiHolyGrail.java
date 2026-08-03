@@ -153,10 +153,20 @@ public class TaiyiHolyGrail extends Artifact {
             hero.sprite.showStatusWithIcon(CharSprite.POSITIVE, Integer.toString(healAmount), FloatingText.HEALING);
         }
 
+        // 造成伤害积累经验升级
+        if (enemy.buff(MagicImmune.class) == null) {
+            exp += Math.max(1, damage / 3);
+            while (exp >= (10 + Math.round(3.33f * level())) && level() < levelCap) {
+                exp -= 10 + Math.round(3.33f * level());
+                Catalog.countUse(getClass());
+                GLog.p("太一圣杯吸收血气，等级提升！");
+                upgrade();
+            }
+        }
         return damage;
     }
 
-    // 击杀敌人时获得经验（替代每击经验）
+    // 击杀敌人时获得经验
     public void onKillEnemy(Char enemy) {
         if (cursed) return;
         exp += 5 + Math.round(level() / 2f);

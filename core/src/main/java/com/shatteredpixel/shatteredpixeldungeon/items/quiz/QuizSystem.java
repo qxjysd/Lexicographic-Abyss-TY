@@ -103,8 +103,18 @@ public class QuizSystem implements Bundlable {
 
 		// 随机奖励分类
 		float r = Random.Float();
-		if (r < 0.35f) {
-			// 35% 药水类
+		if (r < 0.10f) {
+			// 10% 给一个随机词条
+			Dungeon.traits.grantTrait(Dungeon.depth);
+			msg.append("，获得一个随机词条！");
+
+		} else if (r < 0.25f) {
+			// 15% 回复满血
+			hero.HP = hero.HT;
+			msg.append("，完全恢复生命值！");
+
+		} else if (r < 0.35f) {
+			// 10% 药水类
 			if (Random.Float() < 0.5f) {
 				Item item = new PotionOfHealing();
 				msg.append("，获得一瓶治疗药水！");
@@ -115,8 +125,14 @@ public class QuizSystem implements Bundlable {
 				if (!item.collect()) Dungeon.level.drop(item, hero.pos);
 			}
 
+		} else if (r < 0.45f) {
+			// 10% 治疗药水
+			Item item = new PotionOfHealing();
+			msg.append("，获得一瓶治疗药水！");
+			if (!item.collect()) Dungeon.level.drop(item, hero.pos);
+
 		} else if (r < 0.55f) {
-			// 20% 卷轴类
+			// 10% 卷轴类
 			float sr = Random.Float();
 			Item item;
 			if (sr < 0.20f) item = new ScrollOfIdentify();
@@ -156,8 +172,26 @@ public class QuizSystem implements Bundlable {
 				msg.append("（神器已集齐）");
 			}
 
+		} else if (r < 0.70f) {
+			// 10% 鉴定卷轴
+			Item item = new ScrollOfIdentify();
+			msg.append("，获得一张鉴定卷轴！");
+			if (!item.collect()) Dungeon.level.drop(item, hero.pos);
+
+		} else if (r < 0.80f) {
+			// 10% 地图卷轴
+			Item item = new ScrollOfMagicMapping();
+			msg.append("，获得一张地图卷轴！");
+			if (!item.collect()) Dungeon.level.drop(item, hero.pos);
+
+		} else if (r < 0.90f) {
+			// 10% 移除诅咒卷轴
+			Item item = new ScrollOfRemoveCurse();
+			msg.append("，获得一张移除诅咒卷轴！");
+			if (!item.collect()) Dungeon.level.drop(item, hero.pos);
+
 		} else {
-			// 40% 金币
+			// 10% 金币
 			int gold = Random.Int(20, 100) * (Dungeon.depth + 1);
 			Dungeon.gold += gold;
 			msg.append("，获得 " + gold + " 金币！");

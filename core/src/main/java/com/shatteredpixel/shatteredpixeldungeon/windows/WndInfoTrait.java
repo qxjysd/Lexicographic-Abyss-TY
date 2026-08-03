@@ -39,9 +39,16 @@ public class WndInfoTrait extends Window {
 
     private static final float GAP = 2;
     private static final int WIDTH = 120;
+    private static WndInfoTrait currentInstance = null;
 
     public WndInfoTrait(Trait trait) {
         super();
+
+        // 防止重复打开多个窗口
+        if (currentInstance != null) {
+            currentInstance.onBackPressed();
+        }
+        currentInstance = this;
 
         IconTitle titlebar = new IconTitle();
 
@@ -72,6 +79,7 @@ public class WndInfoTrait extends Window {
             @Override
             protected void onClick() {
                 super.onClick();
+                currentInstance = null;
                 onBackPressed();
             }
         };
@@ -112,5 +120,11 @@ public class WndInfoTrait extends Window {
         add(txtEffect);
 
         resize(WIDTH, (int) txtEffect.bottom() + 2);
+    }
+
+    @Override
+    public void onBackPressed() {
+        currentInstance = null;
+        super.onBackPressed();
     }
 }

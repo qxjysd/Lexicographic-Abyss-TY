@@ -1619,7 +1619,6 @@ public class Hero extends Char {
 						}
 					}
 				}
-
 				// 词条：吸血效果（LIFESTEAL% 转化为治疗）
 				if (damage > 0) {
 					float lifestealPct = TraitHandler.getLifestealPercent(this);

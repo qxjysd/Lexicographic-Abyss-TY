@@ -125,9 +125,19 @@ public class ThiefSeal extends Artifact {
             GLog.p("盗圣之证使敌人残废！");
         }
 
+        // 造成伤害积累经验升级
+        if (enemy.buff(MagicImmune.class) == null) {
+            exp += Math.max(1, damage / 4);
+            while (exp >= (10 + Math.round(3.33f * level())) && level() < levelCap) {
+                exp -= 10 + Math.round(3.33f * level());
+                Catalog.countUse(getClass());
+                GLog.p("盗圣之证经验提升，等级提高！");
+                upgrade();
+            }
+        }
     }
 
-    // 击杀敌人时获得经验（替代每击经验）
+    // 击杀敌人时获得经验
     public void onKillEnemy(Char enemy) {
         if (cursed) return;
         exp += 5 + Math.round(level() / 2f);
