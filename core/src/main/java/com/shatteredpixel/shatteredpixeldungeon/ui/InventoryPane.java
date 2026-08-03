@@ -158,7 +158,7 @@ public class InventoryPane extends Component {
 		};
 
 		equipped = new ArrayList<>();
-		for (int i = 0; i < 9; i++){
+		for (int i = 0; i < 10; i++){
 			InventorySlot btn = new InventoryPaneSlot(null);
 			equipped.add(btn);
 			add(btn);
@@ -314,6 +314,7 @@ public class InventoryPane extends Component {
 		equipped.get(6).item(stuff.misc[3] == null ? new WndBag.Placeholder( ItemSpriteSheet.SOMETHING ): stuff.misc[3]);
 		equipped.get(7).item(stuff.ring[0] == null ? new WndBag.Placeholder( ItemSpriteSheet.RING_HOLDER ): stuff.ring[0]);
 		equipped.get(8).item(stuff.ring[1] == null ? new WndBag.Placeholder( ItemSpriteSheet.RING_HOLDER ): stuff.ring[1]);
+		equipped.get(9).item(stuff.ring[2] == null ? new WndBag.Placeholder( ItemSpriteSheet.RING_HOLDER ): stuff.ring[2]);
 
 		ArrayList<Item> items = (ArrayList<Item>) lastBag.items.clone();
 
